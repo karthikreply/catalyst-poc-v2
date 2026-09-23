@@ -30,6 +30,7 @@ import {
   pdmPartnerInvitationCopy,
   preworkForMechanic,
   restoreSeededGraph,
+  savePartnerNote,
   shouldResetGraph,
   viewerForActor,
 } from "./session";
@@ -491,5 +492,36 @@ describe("scope access", () => {
 
     expect(graphForActor(fujitsu, "pdm")).toEqual(initialSessionGraph);
     expect(graphForActor(fujitsu, "partner")).toBe(fujitsu);
+  });
+});
+
+describe("partner session notes", () => {
+  const note = {
+    id: "partner-note-1",
+    author: "Ravi Menon",
+    text: "Claims leadership wants the first review in October.",
+    updatedAt: "2026-09-23T15:00:00.000Z",
+  };
+
+  it("adds and edits partner context without changing captured testimony", () => {
+    const added = savePartnerNote(initialSessionGraph, note);
+    const edited = savePartnerNote(added, { ...note, text: "Claims leadership wants an October review." });
+
+    expect(added.partnerNotes).toEqual([note]);
+    expect(edited.partnerNotes[0].text).toBe("Claims leadership wants an October review.");
+    expect(edited.captures).toEqual(initialSessionGraph.captures);
+  });
+
+  it("hydrates an existing v3 graph without partner notes", () => {
+    const legacy = { ...initialSessionGraph } as Partial<typeof initialSessionGraph>;
+    delete legacy.partnerNotes;
+    expect(hydrateSessionGraph(legacy as typeof initialSessionGraph).partnerNotes).toEqual([]);
+  });
+
+  it("keeps seeded partner context out of a cold session and restores the seeded copy", () => {
+    const seeded = savePartnerNote(initialSessionGraph, note);
+    const cold = applyColdScope(seeded, coldScopeDefaults.company, coldScopeDefaults.attendees);
+    expect(cold.partnerNotes).toEqual([]);
+    expect(restoreSeededGraph(seeded).partnerNotes).toEqual([note]);
   });
 });

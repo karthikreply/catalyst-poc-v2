@@ -55,6 +55,13 @@ export type Capture = {
   capturedAt: string;
 };
 
+export type PartnerNote = {
+  id: string;
+  author: string;
+  text: string;
+  updatedAt: string;
+};
+
 export type ValueInput = {
   id: string;
   sessionId: string;
@@ -96,6 +103,7 @@ export type SessionGraph = {
   session: Session;
   agenda: AgendaStep[];
   captures: Capture[];
+  partnerNotes: PartnerNote[];
   valueInputs: ValueInput[];
   costComponents: CostComponent[];
   outcome: Outcome;
@@ -200,6 +208,7 @@ export const initialSessionGraph: SessionGraph = {
     text,
     capturedAt: `2026-09-21T10:${20 + index}:00-05:00`,
   })),
+  partnerNotes: [],
   valueInputs: [
     { id: "claims", sessionId, label: "Claims per day", quantity: 400, unit: "claims/day", confirmedBy: "Michelle Dorsey", respondentConfirmed: true },
     { id: "delay", sessionId, label: "Avoidable delay", quantity: 2, unit: "days", confirmedBy: "Dana Reyes", respondentConfirmed: true },

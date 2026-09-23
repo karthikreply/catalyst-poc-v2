@@ -9,6 +9,7 @@ import {
   type ColdCompany,
   type Delivery,
   type Mechanic,
+  type PartnerNote,
   type SessionGraph,
 } from "./seed";
 import { calculateAnnualValue, calculateDailyValue, formatCurrency, formatPreciseCurrency } from "./value";
@@ -117,6 +118,7 @@ export function hydrateSessionGraph(value: SessionGraph | null): SessionGraph {
         : value.costComponents ?? initialSessionGraph.costComponents,
     agenda,
     captures: legacyCold ? [] : value.captures ?? (cold ? [] : initialSessionGraph.captures),
+    partnerNotes: value.partnerNotes ?? [],
     attendees: cold
       ? value.attendees ?? []
       : value.attendees?.length
@@ -168,6 +170,7 @@ export function applyColdScope(
         }))
       : graph.agenda,
     captures: enteringCold ? [] : graph.captures,
+    partnerNotes: enteringCold ? [] : graph.partnerNotes,
     valueInputs: enteringCold ? emptyValueInputs(sessionId) : graph.valueInputs,
     costComponents: enteringCold ? emptyCostComponents() : graph.costComponents,
     outcome: {
@@ -191,6 +194,16 @@ export function applyColdScope(
         attendance: "attending",
       };
     }),
+  };
+}
+
+export function savePartnerNote(graph: SessionGraph, note: PartnerNote): SessionGraph {
+  const exists = graph.partnerNotes.some((item) => item.id === note.id);
+  return {
+    ...graph,
+    partnerNotes: exists
+      ? graph.partnerNotes.map((item) => item.id === note.id ? note : item)
+      : [...graph.partnerNotes, note],
   };
 }
 

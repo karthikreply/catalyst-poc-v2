@@ -27,6 +27,7 @@ import {
   hydrateSessionGraph,
   isSessionReadOnly,
   restoreSeededGraph,
+  savePartnerNote as savePartnerNoteInGraph,
   viewerForActor,
   type ClaimsVolumeChoice,
   type FundingRoute,
@@ -54,6 +55,7 @@ type SessionContextValue = {
   setCustomerProfile: (profile: { name?: string; context?: string }) => void;
   setColdScope: (company: ColdCompany, attendees: ColdAttendee[]) => void;
   restoreSeededScope: () => void;
+  savePartnerNote: (noteId: string | null, text: string) => void;
   canEditSession: boolean;
 };
 
@@ -245,6 +247,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setGraph(restoreSeededGraph(parsed));
   }
 
+  function savePartnerNote(noteId: string | null, text: string) {
+    if (!canEditSession) return;
+    setGraph((current) => savePartnerNoteInGraph(current, {
+      id: noteId ?? `partner-note-${Date.now()}`,
+      author: viewer.name,
+      text: text.trim(),
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
   const value = {
     graph,
     brandId,
@@ -266,6 +278,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setCustomerProfile,
     setColdScope,
     restoreSeededScope,
+    savePartnerNote,
     canEditSession,
   };
 
