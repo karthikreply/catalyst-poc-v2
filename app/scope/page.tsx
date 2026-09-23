@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, Plus, TriangleAlert } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/components/session-provider";
 import {
   crmBadge,
@@ -50,11 +51,13 @@ export default function ScopePage() {
     applyFunding,
     applyPattern,
     applyReusePilot,
+    savePartnerNote,
     setColdScope,
     restoreSeededScope,
   } = useSession();
   const mode = graph.session.scopeMode;
-  const [adjusting, setAdjusting] = useState<"pattern" | "spec" | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
   const fundingRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLDivElement>(null);
   const observation = mode === "seeded" ? deriveKarenObservation(heartlandAccountRecord) : null;
@@ -88,6 +91,14 @@ export default function ScopePage() {
   function clearToColdMode() {
     if (!canEditSession) return;
     setColdScope(coldScopeDefaults.company, coldScopeDefaults.attendees);
+  }
+
+  function submitPartnerNote(event: FormEvent) {
+    event.preventDefault();
+    if (!canEditSession || !noteDraft.trim()) return;
+    savePartnerNote(editingNoteId, noteDraft);
+    setEditingNoteId(null);
+    setNoteDraft("");
   }
 
   if (!canViewPartnerScope(viewer.actor)) {
@@ -183,6 +194,75 @@ export default function ScopePage() {
               </p>
             </section>
 
+            <section className="rounded-sm border border-[var(--brand-accent)]/35 bg-[color-mix(in_srgb,var(--brand-accent)_4%,white)] p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">Partner additions</h2>
+                  <p className="mt-1 text-xs font-medium text-black/48">Partner input · not from CRM</p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {graph.partnerNotes.map((note) => (
+                  <article key={note.id} className="rounded-sm border border-black/10 bg-white p-4">
+                    <p className="text-sm leading-6 text-black/70">{note.text}</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="text-xs text-black/48">Added by {note.author}</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!canEditSession}
+                        onClick={() => {
+                          setEditingNoteId(note.id);
+                          setNoteDraft(note.text);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+                {graph.partnerNotes.length === 0 && (
+                  <p className="text-sm text-black/52">No partner notes added yet.</p>
+                )}
+              </div>
+
+              <form onSubmit={submitPartnerNote} className="mt-4">
+                <label className="text-sm font-medium">
+                  {editingNoteId ? "Edit partner note" : "Add context for the session"}
+                  <Textarea
+                    value={noteDraft}
+                    disabled={!canEditSession}
+                    onChange={(event) => setNoteDraft(event.target.value)}
+                    placeholder="Add partner context that is not in CRM…"
+                    className="mt-2 rounded-sm bg-white"
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!canEditSession || !noteDraft.trim()}
+                  className="mt-3"
+                >
+                  {editingNoteId ? "Save note" : "Add partner note"}
+                </Button>
+              </form>
+
+              <div className="mt-5 border-t border-black/10 pt-4">
+                <p className="text-xs font-medium text-black/45">Pattern</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <ChoiceChip selected={graph.session.patternId === "document-intake"} disabled={!canEditSession} onClick={() => applyPattern("document-intake")}>Document-heavy intake</ChoiceChip>
+                  <ChoiceChip selected={graph.session.patternId === "fraud-triage"} disabled={!canEditSession} onClick={() => applyPattern("fraud-triage")}>Fraud triage</ChoiceChip>
+                </div>
+                <p className="mt-4 text-xs font-medium text-black/45">Pilot spec</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <ChoiceChip selected={graph.session.reusePriorPilotSpec !== false} disabled={!canEditSession} onClick={() => applyReusePilot(true)}>Reuse prior spec</ChoiceChip>
+                  <ChoiceChip selected={graph.session.reusePriorPilotSpec === false} disabled={!canEditSession} onClick={() => applyReusePilot(false)}>Start fresh</ChoiceChip>
+                </div>
+              </div>
+            </section>
+
             <section className="rounded-sm border border-black/10 bg-white p-5">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="font-semibold">Matched pattern</h2>
@@ -250,39 +330,6 @@ export default function ScopePage() {
                       </li>
                     ))}
                   </ul>
-                </div>
-                <div className="border-t border-black/10 pt-4">
-                  <p className="text-xs font-medium text-black/45">Record-derived defaults</p>
-                  <div className="mt-3 space-y-4 text-sm">
-                    <div>
-                      <div className="flex items-center justify-between gap-3">
-                        <p>Pattern: <span className="font-medium">{graph.session.patternId === "fraud-triage" ? "Fraud triage" : "Document-heavy intake"}</span></p>
-                        {canEditSession && (
-                          <button type="button" className="text-xs font-medium underline underline-offset-4" onClick={() => setAdjusting(adjusting === "pattern" ? null : "pattern")}>adjust</button>
-                        )}
-                      </div>
-                      {adjusting === "pattern" && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <ChoiceChip selected={graph.session.patternId === "document-intake"} disabled={!canEditSession} onClick={() => applyPattern("document-intake")}>Document-heavy intake</ChoiceChip>
-                          <ChoiceChip selected={graph.session.patternId === "fraud-triage"} disabled={!canEditSession} onClick={() => applyPattern("fraud-triage")}>Fraud triage</ChoiceChip>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between gap-3">
-                        <p>Pilot spec: <span className="font-medium">{graph.session.reusePriorPilotSpec === false ? "Start fresh" : "Reuse prior spec"}</span></p>
-                        {canEditSession && (
-                          <button type="button" className="text-xs font-medium underline underline-offset-4" onClick={() => setAdjusting(adjusting === "spec" ? null : "spec")}>adjust</button>
-                        )}
-                      </div>
-                      {adjusting === "spec" && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <ChoiceChip selected={graph.session.reusePriorPilotSpec !== false} disabled={!canEditSession} onClick={() => applyReusePilot(true)}>Reuse prior spec</ChoiceChip>
-                          <ChoiceChip selected={graph.session.reusePriorPilotSpec === false} disabled={!canEditSession} onClick={() => applyReusePilot(false)}>Start fresh</ChoiceChip>
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             </details>
@@ -517,8 +564,8 @@ function ChoiceChip({
         if (disabled) return;
         onClick();
       }}
+      disabled={disabled}
       aria-pressed={selected}
-      aria-disabled={disabled}
       className={cn("rounded-full font-normal", selected && "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_8%,white)]")}
     >
       {children}
