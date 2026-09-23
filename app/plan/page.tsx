@@ -111,8 +111,10 @@ ${people.signoff}`;
                   <button
                     key={value}
                     type="button"
+                    aria-pressed={graph.session.delivery === value}
+                    disabled={!canEditSession}
                     onClick={() => setDelivery(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm", graph.session.delivery === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
+                    className={cn("rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60", graph.session.delivery === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
                   >
                     <span className="font-semibold">{label}</span>
                     <span className="mt-1 block text-xs text-black/50">{hint}</span>
@@ -130,8 +132,10 @@ ${people.signoff}`;
                   <button
                     key={value}
                     type="button"
+                    aria-pressed={graph.session.mechanic === value}
+                    disabled={!canEditSession}
                     onClick={() => setMechanic(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm", graph.session.mechanic === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
+                    className={cn("rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60", graph.session.mechanic === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
                   >
                     <span className="font-semibold">{label}</span>
                     <span className="mt-1 block text-xs text-black/50">{hint}</span>

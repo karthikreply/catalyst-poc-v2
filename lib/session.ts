@@ -46,7 +46,8 @@ export const coldScopeDefaults: { company: ColdCompany; attendees: ColdAttendee[
 };
 
 export function restoreSeededGraph(saved: SessionGraph | null) {
-  return saved?.session.scopeMode === "seeded" ? saved : initialSessionGraph;
+  const hydrated = hydrateSessionGraph(saved);
+  return hydrated.session.scopeMode === "seeded" ? hydrated : initialSessionGraph;
 }
 
 export function graphForActor(graph: SessionGraph, actor: Actor) {
@@ -250,6 +251,8 @@ export function hasCompleteCostComponents(graph: SessionGraph) {
 }
 
 export function applyDeliveryMode(graph: SessionGraph, delivery: Delivery): SessionGraph {
+  if (graph.session.delivery === delivery) return graph;
+
   const valueInputs = graph.valueInputs.map((input) =>
     delivery === "self-service"
       ? { ...input, confirmedBy: null, respondentConfirmed: true }

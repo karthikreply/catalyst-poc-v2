@@ -39,11 +39,18 @@ import { calculateAnnualValue } from "./value";
 
 describe("self-service input confirmation", () => {
   it("updates one confirmer without changing values, captures, or other confirmers", () => {
-    const selfService = applyDeliveryMode(initialSessionGraph, "self-service");
+    const selfService = {
+      ...applyDeliveryMode(initialSessionGraph, "self-service"),
+      valueInputs: initialSessionGraph.valueInputs.map((input, index) => ({
+        ...input,
+        confirmedBy: ["Michelle Dorsey", "Dana Reyes", "Alex Chen"][index],
+      })),
+    };
     const updated = updateValueConfirmer(selfService, "claims", "Dana Reyes");
 
     expect(updated.valueInputs.find((item) => item.id === "claims")?.confirmedBy).toBe("Dana Reyes");
-    expect(updated.valueInputs.find((item) => item.id === "delay")?.confirmedBy).toBeNull();
+    expect(updated.valueInputs.find((item) => item.id === "delay")?.confirmedBy).toBe("Dana Reyes");
+    expect(updated.valueInputs.find((item) => item.id === "handling")?.confirmedBy).toBe("Alex Chen");
     expect(updated.valueInputs.map((item) => item.quantity)).toEqual(
       selfService.valueInputs.map((item) => item.quantity),
     );
@@ -52,6 +59,18 @@ describe("self-service input confirmation", () => {
 });
 
 describe("applyDeliveryMode", () => {
+  it("preserves named confirmers when self-service is selected again", () => {
+    const selfService = {
+      ...applyDeliveryMode(initialSessionGraph, "self-service"),
+      valueInputs: initialSessionGraph.valueInputs.map((input, index) => ({
+        ...input,
+        confirmedBy: ["Michelle Dorsey", "Dana Reyes", "Alex Chen"][index],
+      })),
+    };
+
+    expect(applyDeliveryMode(selfService, "self-service").valueInputs).toEqual(selfService.valueInputs);
+  });
+
   it("keeps edited values and captures when switching delivery", () => {
     const edited = {
       ...initialSessionGraph,
@@ -409,6 +428,13 @@ describe("cold scope", () => {
     expect(restoreSeededGraph(editedSeeded).valueInputs).toEqual(editedSeeded.valueInputs);
     expect(restoreSeededGraph(cold)).toEqual(initialSessionGraph);
     expect(restoreSeededGraph(null)).toEqual(initialSessionGraph);
+  });
+
+  it("hydrates a seeded v3 snapshot before restoring it", () => {
+    const legacy = { ...initialSessionGraph } as Partial<typeof initialSessionGraph>;
+    delete legacy.partnerNotes;
+
+    expect(restoreSeededGraph(legacy as typeof initialSessionGraph).partnerNotes).toEqual([]);
   });
 });
 

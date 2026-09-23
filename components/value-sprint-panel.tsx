@@ -14,6 +14,7 @@ export function ValueSprintPanel() {
     ? calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!)
     : null;
   const selfService = graph.session.delivery === "self-service";
+  const attendeeNames = new Set(graph.attendees.map((attendee) => attendee.name));
   const InputRow = selfService ? "div" : "label";
 
   return (
@@ -43,7 +44,7 @@ export function ValueSprintPanel() {
             <InputRow key={input.id} className="grid grid-cols-[1fr_100px] items-center gap-4 text-sm">
               <span>
                 {input.label}
-                <span className="block text-xs text-black/45">
+                <span id={`${input.id}-confirmer-status`} className="block text-xs text-black/45">
                   {selfService
                     ? input.confirmedBy
                       ? `Confirmed by ${input.confirmedBy} · not facilitator-verified`
@@ -55,12 +56,16 @@ export function ValueSprintPanel() {
                 {selfService && (
                   <select
                     aria-label={`Confirmer for ${input.label}`}
+                    aria-describedby={`${input.id}-confirmer-status`}
                     value={input.confirmedBy ?? ""}
                     disabled={!canEditSession}
                     onChange={(event) => updateValueConfirmer(input.id, event.target.value || null)}
                     className="mt-2 w-full rounded-sm border border-black/15 bg-white px-2 py-2 text-sm outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-accent)_15%,transparent)] disabled:bg-black/[.03] disabled:text-black/45"
                   >
                     <option value="">Choose attendee</option>
+                    {input.confirmedBy && !attendeeNames.has(input.confirmedBy) && (
+                      <option value={input.confirmedBy}>{input.confirmedBy}</option>
+                    )}
                     {graph.attendees.map((attendee) => (
                       <option key={attendee.id} value={attendee.name}>{attendee.name}</option>
                     ))}
