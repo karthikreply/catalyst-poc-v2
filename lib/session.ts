@@ -5,6 +5,7 @@ import {
   patterns,
   prework,
   type Actor,
+  type Capture,
   type ColdAttendee,
   type ColdCompany,
   type Delivery,
@@ -214,6 +215,29 @@ export function savePartnerNote(graph: SessionGraph, note: PartnerNote): Session
   return {
     ...graph,
     partnerNotes: [note],
+  };
+}
+
+const seededCaptureIds = new Set(initialSessionGraph.captures.map((capture) => capture.id));
+
+export function isEditableCapture(capture: Capture) {
+  return !seededCaptureIds.has(capture.id);
+}
+
+export function updateCapture(
+  graph: SessionGraph,
+  captureId: string,
+  update: { attributedTo: string; text: string },
+): SessionGraph {
+  const text = update.text.trim();
+  if (!text) return graph;
+  return {
+    ...graph,
+    captures: graph.captures.map((capture) =>
+      capture.id === captureId && isEditableCapture(capture)
+        ? { ...capture, attributedTo: update.attributedTo, text }
+        : capture,
+    ),
   };
 }
 

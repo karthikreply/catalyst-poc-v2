@@ -26,6 +26,7 @@ import {
   graphForActor,
   hydrateSessionGraph,
   inputsConfirmedByCopy,
+  isEditableCapture,
   missingColdRoles,
   isQualified,
   isSessionReadOnly,
@@ -34,6 +35,7 @@ import {
   restoreSeededGraph,
   savePartnerNote,
   shouldResetGraph,
+  updateCapture,
   updateValueConfirmer,
   viewerForActor,
 } from "./session";
@@ -689,5 +691,49 @@ describe("partner session notes", () => {
     const cold = applyColdScope(seeded, coldScopeDefaults.company, coldScopeDefaults.attendees);
     expect(cold.partnerNotes).toEqual([]);
     expect(restoreSeededGraph(seeded).partnerNotes).toEqual([note]);
+  });
+});
+
+describe("session captures", () => {
+  const sessionCapture = {
+    id: "capture-1758645600000",
+    sessionId: initialSessionGraph.session.id,
+    stepId: "where-it-hurts",
+    attributedTo: "Dana Reyes",
+    text: "Board asked for a decision by November.",
+    capturedAt: "2026-09-23T16:00:00.000Z",
+  };
+  const withSessionCapture = {
+    ...initialSessionGraph,
+    captures: [...initialSessionGraph.captures, sessionCapture],
+  };
+
+  it("treats seeded testimony as fixed and session captures as editable", () => {
+    expect(initialSessionGraph.captures.every((capture) => !isEditableCapture(capture))).toBe(true);
+    expect(isEditableCapture(sessionCapture)).toBe(true);
+  });
+
+  it("edits the text and attribution of a session capture only", () => {
+    const updated = updateCapture(withSessionCapture, sessionCapture.id, {
+      attributedTo: "Michelle Dorsey",
+      text: "  Board asked for a decision by October.  ",
+    });
+
+    expect(updated.captures).toHaveLength(withSessionCapture.captures.length);
+    expect(updated.captures.at(-1)).toEqual({
+      ...sessionCapture,
+      attributedTo: "Michelle Dorsey",
+      text: "Board asked for a decision by October.",
+    });
+    expect(updated.captures.slice(0, -1)).toEqual(initialSessionGraph.captures);
+  });
+
+  it("refuses to rewrite seeded testimony or blank a capture", () => {
+    const seeded = initialSessionGraph.captures[0];
+
+    expect(updateCapture(withSessionCapture, seeded.id, { attributedTo: "Ravi Menon", text: "Rewritten." }).captures)
+      .toEqual(withSessionCapture.captures);
+    expect(updateCapture(withSessionCapture, sessionCapture.id, { attributedTo: "Dana Reyes", text: "   " }).captures)
+      .toEqual(withSessionCapture.captures);
   });
 });

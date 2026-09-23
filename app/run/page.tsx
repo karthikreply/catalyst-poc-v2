@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Lightbulb, Plus } from "lucide-react";
+import { ArrowRight, Check, Lightbulb, Pencil, Plus } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { GhostLedgerPanel } from "@/components/ghost-ledger-panel";
@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { useSession } from "@/components/session-provider";
 import { ValueSprintPanel } from "@/components/value-sprint-panel";
 import { nextQuestionSuggestion } from "@/lib/facilitation";
-import { agendaForSession } from "@/lib/session";
+import { agendaForSession, isEditableCapture } from "@/lib/session";
+import type { Capture } from "@/lib/seed";
 import { cn } from "@/lib/utils";
 
 export default function RunPage() {
-  const { graph, brand, addCapture, setActiveStep, canEditSession, viewer } = useSession();
+  const { graph, brand, addCapture, updateCapture, setActiveStep, canEditSession, viewer } = useSession();
   const agenda = agendaForSession(graph);
   const activeStep = agenda.find((step) => step.state === "active") ?? agenda[2];
   const capturePeople = graph.attendees.map((attendee) => attendee.name);
@@ -128,11 +129,15 @@ export default function RunPage() {
                 {graph.captures.length === 0 && (
                   <p className="p-4 text-sm text-black/55">No captures yet. Attribute each note to someone in the room.</p>
                 )}
-                {graph.captures.slice(-5).map((capture) => (
-                  <div key={capture.id} className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                    <p className="text-sm font-semibold">{capture.attributedTo}</p>
-                    <p className="text-sm leading-6 text-black/70">{capture.text}</p>
-                  </div>
+                {graph.captures.map((capture) => (
+                  <CaptureRow
+                    key={capture.id}
+                    capture={capture}
+                    people={capturePeople}
+                    canEdit={canEditSession && isEditableCapture(capture)}
+                    showAttribution={!selfService}
+                    onSave={updateCapture}
+                  />
                 ))}
                 {canEditSession && (
                   <form onSubmit={submitCapture} className="flex flex-wrap items-center gap-2 p-3">
@@ -156,6 +161,70 @@ export default function RunPage() {
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+function CaptureRow({
+  capture,
+  people,
+  canEdit,
+  showAttribution,
+  onSave,
+}: {
+  capture: Capture;
+  people: string[];
+  canEdit: boolean;
+  showAttribution: boolean;
+  onSave: (captureId: string, update: { attributedTo: string; text: string }) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(capture.text);
+  const [attributedTo, setAttributedTo] = useState(capture.attributedTo);
+
+  function save(event: FormEvent) {
+    event.preventDefault();
+    if (!text.trim()) return;
+    onSave(capture.id, { attributedTo, text });
+    setEditing(false);
+  }
+
+  function cancel() {
+    setText(capture.text);
+    setAttributedTo(capture.attributedTo);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={save} className="flex flex-wrap items-center gap-2 p-3">
+        {showAttribution && (
+          <label>
+            <span className="sr-only">Change attributed speaker</span>
+            <select value={attributedTo} onChange={(event) => setAttributedTo(event.target.value)} className="h-9 rounded-sm border border-black/15 bg-white px-2 text-sm outline-none focus:border-[var(--brand-accent)]">
+              {(people.includes(attributedTo) ? people : [attributedTo, ...people]).map((name) => <option key={name}>{name}</option>)}
+            </select>
+          </label>
+        )}
+        <label className="min-w-[220px] flex-1">
+          <span className="sr-only">Edit capture text</span>
+          <Input value={text} onChange={(event) => setText(event.target.value)} className="rounded-sm" />
+        </label>
+        <Button type="submit" size="sm" disabled={!text.trim()}>Save</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={cancel}>Cancel</Button>
+      </form>
+    );
+  }
+
+  return (
+    <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr_auto]">
+      <p className="text-sm font-semibold">{capture.attributedTo}</p>
+      <p className="text-sm leading-6 text-black/70">{capture.text}</p>
+      {canEdit && (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
+          <Pencil /> Edit
+        </Button>
+      )}
     </div>
   );
 }
