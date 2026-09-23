@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Plus, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronDown, Plus, TriangleAlert } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,6 @@ export default function ScopePage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const fundingRef = useRef<HTMLDivElement>(null);
-  const doneRef = useRef<HTMLDivElement>(null);
   const observation = mode === "seeded" ? deriveKarenObservation(heartlandAccountRecord) : null;
   const claimsChoice = graph.session.claimsVolumeChoice;
   const fundingRoute = graph.session.fundingRoute;
@@ -70,22 +69,37 @@ export default function ScopePage() {
   const completeAttendees = coldAttendees.filter((person) => person.name.trim() && person.role.trim());
   const coldComplete = companyComplete && completeAttendees.length >= 3;
   const coldGaps = missingColdRoles(graph);
+  const scopeComplete = mode === "seeded" ? seededComplete : coldComplete;
+  const missingAttendeeCount = Math.max(0, 3 - completeAttendees.length);
+  const scopeGuidance = mode === "seeded"
+    ? !claimsChoice && !fundingRoute
+      ? "Confirm claims volume and funding route."
+      : !claimsChoice
+        ? "Confirm claims volume."
+        : !fundingRoute
+          ? "Confirm funding route."
+          : "Scope complete."
+    : !companyComplete && missingAttendeeCount > 0
+      ? `Complete company details and add ${missingAttendeeCount} complete ${missingAttendeeCount === 1 ? "attendee" : "attendees"}.`
+      : !companyComplete
+        ? "Complete company details."
+        : missingAttendeeCount > 0
+          ? `Add ${missingAttendeeCount} complete ${missingAttendeeCount === 1 ? "attendee" : "attendees"}.`
+          : "Scope complete.";
 
-  function revealNext(target: "funding" | "done") {
+  function revealFunding() {
     requestAnimationFrame(() => {
-      const node = target === "done" ? doneRef.current : fundingRef.current;
-      node?.scrollIntoView({ behavior: "smooth", block: "center" });
+      fundingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
 
   function chooseClaims(choice: ClaimsVolumeChoice) {
     applyClaimsChoice(choice);
-    revealNext(fundingRoute ? "done" : "funding");
+    if (!fundingRoute) revealFunding();
   }
 
   function chooseFunding(route: FundingRoute) {
     applyFunding(route);
-    if (claimsChoice) revealNext("done");
   }
 
   function clearToColdMode() {
@@ -157,15 +171,35 @@ export default function ScopePage() {
             <p className="mt-2 text-xs text-black/45">{crmBadge(brand.partnerName)}</p>
           )}
         </div>
-        {mode === "seeded" && canEditSession ? (
-          <Button variant="outline" onClick={clearToColdMode}>
-            Start without the record
-          </Button>
-        ) : mode === "cold" && canEditSession ? (
-          <Button variant="outline" onClick={restoreSeededScope}>
-            Use account record instead
-          </Button>
-        ) : null}
+        <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {scopeComplete ? (
+              <Link
+                href="/plan"
+                aria-describedby="scope-next-step-status"
+                className={cn(buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}
+              >
+                Review session plan <ArrowRight />
+              </Link>
+            ) : (
+              <Button type="button" disabled aria-describedby="scope-next-step-status">
+                Review session plan <ArrowRight />
+              </Button>
+            )}
+            {mode === "seeded" && canEditSession ? (
+              <Button variant="outline" onClick={clearToColdMode}>
+                Start without the record
+              </Button>
+            ) : mode === "cold" && canEditSession ? (
+              <Button variant="outline" onClick={restoreSeededScope}>
+                Use account record instead
+              </Button>
+            ) : null}
+          </div>
+          <p id="scope-next-step-status" role="status" aria-live="polite" className="text-xs text-black/55">
+            {scopeGuidance}
+          </p>
+        </div>
       </div>
 
       {mode === "seeded" ? (
@@ -401,22 +435,6 @@ export default function ScopePage() {
                 </div>
               )}
 
-              {seededComplete && (
-                <div ref={doneRef} className="scroll-mt-24 rounded-sm border p-4" style={{ borderColor: "var(--brand-accent)" }}>
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Check className="size-4" style={{ color: "var(--brand-accent)" }} /> Ready for the session plan
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-black/55">
-                    Volume is on the case, and the funding route is explicit.
-                  </p>
-                  <Link
-                    href="/plan"
-                    className={cn(buttonVariants({ className: "mt-4 bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}
-                  >
-                    Review session plan <ArrowRight />
-                  </Link>
-                </div>
-              )}
             </div>
           </section>
         </div>
@@ -517,28 +535,6 @@ export default function ScopePage() {
             )}
 
           </section>
-          <div className="sticky bottom-4 z-10 rounded-sm border border-black/15 bg-white p-4 shadow-lg lg:col-span-2">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="min-w-64 flex-1">
-                <p className="text-sm font-semibold">Next: review the session plan</p>
-                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-black/58">
-                  <p>{companyComplete ? "✓" : "○"} Company details complete</p>
-                  <p>{completeAttendees.length >= 3 ? "✓" : "○"} Three attendees complete ({completeAttendees.length}/3)</p>
-                </div>
-              </div>
-              {coldComplete ? (
-                <Link href="/plan" className={cn(buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}>
-                  Review session plan <ArrowRight />
-                </Link>
-              ) : (
-                <Button type="button" disabled>
-                  {!companyComplete
-                    ? "Complete company details"
-                    : `Add ${3 - completeAttendees.length} more complete ${3 - completeAttendees.length === 1 ? "attendee" : "attendees"}`}
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </div>

@@ -83,8 +83,15 @@ export default function RunPage() {
 
         <section className="p-5 lg:p-8">
           <div className="mx-auto max-w-5xl">
-            <p className="mb-2 text-sm font-medium text-black/45">{activeStep.title} · {activeStep.durationMinutes} min</p>
-            <h2 className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-3xl">{activeStep.prompt}</h2>
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="mb-2 text-sm font-medium text-black/45">{activeStep.title} · {activeStep.durationMinutes} min</p>
+                <h2 className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-3xl">{activeStep.prompt}</h2>
+              </div>
+              <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--brand-accent)] text-white hover:bg-[var(--brand-accent-dark)]" })}>
+                Generate business case <ArrowRight />
+              </Link>
+            </div>
             {!selfService && (
               <div className="mt-4 max-w-4xl">
                 {suggestion?.stepId === activeStep.id ? (
@@ -146,10 +153,6 @@ export default function RunPage() {
                 )}
               </div>
             </div>
-
-            <footer className="mt-7 flex flex-wrap items-center justify-end gap-3 border-t border-black/10 pt-5">
-              <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--brand-accent)] text-white hover:bg-[var(--brand-accent-dark)]" })}>Generate business case <ArrowRight /></Link>
-            </footer>
           </div>
         </section>
       </div>
