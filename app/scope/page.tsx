@@ -126,8 +126,16 @@ export default function ScopePage() {
 
     return (
       <div className="mx-auto max-w-5xl px-5 py-8 lg:px-8">
-        <p className="text-sm text-black/48">Read-only vendor view</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Scope the value session</h1>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-black/48">Read-only vendor view</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">Scope the value session</h1>
+          </div>
+          <ScopeNextStep
+            complete={scopeComplete}
+            guidance={scopeComplete ? "Scope complete." : "The session plan is available when scoping is complete."}
+          />
+        </div>
         <p className="mt-5 rounded-sm border border-black/10 bg-[#fafaf8] px-5 py-4 text-sm leading-6 text-black/65">
           Account record is partner-held. The vendor sees the session outcome, not the CRM.
         </p>
@@ -171,22 +179,10 @@ export default function ScopePage() {
             <p className="mt-2 text-xs text-black/45">{crmBadge(brand.partnerName)}</p>
           )}
         </div>
-        <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            {scopeComplete ? (
-              <Link
-                href="/plan"
-                aria-describedby="scope-next-step-status"
-                className={cn(buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}
-              >
-                Review session plan <ArrowRight />
-              </Link>
-            ) : (
-              <Button type="button" disabled aria-describedby="scope-next-step-status">
-                Review session plan <ArrowRight />
-              </Button>
-            )}
-            {mode === "seeded" && canEditSession ? (
+        <ScopeNextStep
+          complete={scopeComplete}
+          guidance={scopeGuidance}
+          secondaryAction={mode === "seeded" && canEditSession ? (
               <Button variant="outline" onClick={clearToColdMode}>
                 Start without the record
               </Button>
@@ -195,11 +191,7 @@ export default function ScopePage() {
                 Use account record instead
               </Button>
             ) : null}
-          </div>
-          <p id="scope-next-step-status" role="status" aria-live="polite" className="text-xs text-black/55">
-            {scopeGuidance}
-          </p>
-        </div>
+        />
       </div>
 
       {mode === "seeded" ? (
@@ -540,6 +532,41 @@ export default function ScopePage() {
     </div>
   );
 }
+
+function ScopeNextStep({
+  complete,
+  guidance,
+  secondaryAction,
+}: {
+  complete: boolean;
+  guidance: string;
+  secondaryAction?: ReactNode;
+}) {
+  return (
+    <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end">
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        {complete ? (
+          <Link
+            href="/plan"
+            aria-describedby="scope-next-step-status"
+            className={cn(buttonVariants({ className: "bg-[var(--brand-accent)] hover:bg-[var(--brand-accent-dark)]" }))}
+          >
+            Review session plan <ArrowRight />
+          </Link>
+        ) : (
+          <Button type="button" disabled aria-describedby="scope-next-step-status">
+            Review session plan <ArrowRight />
+          </Button>
+        )}
+        {secondaryAction}
+      </div>
+      <p id="scope-next-step-status" role="status" aria-live="polite" className="text-xs text-black/55">
+        {guidance}
+      </p>
+    </div>
+  );
+}
+
 function ChoiceChip({
   selected,
   disabled,
