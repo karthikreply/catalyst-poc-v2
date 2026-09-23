@@ -510,10 +510,12 @@ function PartnerContextForm({
   onSave: (noteId: string | null, text: string) => void;
 }) {
   const [draft, setDraft] = useState(context?.text ?? "");
+  const savedText = context?.text ?? "";
+  const unsaved = draft.trim() !== savedText;
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!canEdit || !draft.trim()) return;
+    if (!canEdit || !draft.trim() || !unsaved) return;
     onSave(context?.id ?? null, draft);
   }
 
@@ -529,14 +531,24 @@ function PartnerContextForm({
           className="mt-2 rounded-sm bg-white"
         />
       </label>
-      <Button
-        type="submit"
-        size="sm"
-        disabled={!canEdit || !draft.trim()}
-        className="mt-3"
-      >
-        Save context
-      </Button>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={!canEdit || !draft.trim() || !unsaved}
+        >
+          Save context
+        </Button>
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn("text-xs font-medium", unsaved ? "text-amber-800" : "text-black/48")}
+        >
+          {unsaved
+            ? savedText && "Unsaved changes"
+            : savedText && "Saved · carried into the plan and business case"}
+        </p>
+      </div>
     </form>
   );
 }

@@ -7,7 +7,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initialSessionGraph } from "@/lib/seed";
-import { applyClaimsVolumeChoice, applyExactClaimsVolume } from "@/lib/session";
+import { applyClaimsVolumeChoice, applyExactClaimsVolume, savePartnerNote } from "@/lib/session";
 
 const { useSessionMock } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
@@ -125,6 +125,50 @@ describe("partner context", () => {
     expect(markup).not.toContain(">Edit<");
     expect(markup).not.toContain("Add partner note");
     expect(markup).not.toContain("Added by");
+  });
+
+  it("confirms the save and flags later edits as unsaved", () => {
+    useSessionMock.mockImplementation(() => {
+      const [graph, setGraph] = useState(initialSessionGraph);
+
+      return {
+        graph,
+        brand: { partnerName: "CDW" },
+        viewer: { actor: "partner", name: "Ravi Menon", org: "CDW" },
+        canEditSession: true,
+        applyClaimsChoice: vi.fn(),
+        applyExactClaims: vi.fn(),
+        applyFunding: vi.fn(),
+        applyPattern: vi.fn(),
+        applyReusePilot: vi.fn(),
+        savePartnerNote: (noteId: string | null, text: string) => {
+          setGraph((current) => savePartnerNote(current, {
+            id: noteId ?? "partner-note-1",
+            author: "Ravi Menon",
+            text: text.trim(),
+            updatedAt: "2026-09-23T16:00:00.000Z",
+          }));
+        },
+        setColdScope: vi.fn(),
+        restoreSeededScope: vi.fn(),
+      };
+    });
+
+    render(<ScopePage />);
+    fireEvent.change(screen.getByLabelText("Partner context"), {
+      target: { value: "Claims leadership wants an October review." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save context" }));
+
+    expect(screen.getByText(/^Saved/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save context" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Partner context"), {
+      target: { value: "Claims leadership wants a November review." },
+    });
+
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save context" })).toBeEnabled();
   });
 });
 
