@@ -8,6 +8,7 @@ import {
   applyClaimsVolumeChoice,
   applyColdScope,
   applyDeliveryMode,
+  applyExactClaimsVolume,
   applyFundingRoute,
   applyMechanic,
   artifactActions,
@@ -279,6 +280,38 @@ describe("scope decisions", () => {
     expect(copy.headline).not.toContain("$7.75M");
   });
 
+  it("uses a valid exact claims volume in quantity, arithmetic, and artifact copy", () => {
+    const exactSelected = applyClaimsVolumeChoice(
+      initialSessionGraph,
+      "exact",
+    );
+    const next = applyExactClaimsVolume(exactSelected, 275);
+    const claims = next.valueInputs.find((input) => input.id === "claims");
+
+    expect(claims?.quantity).toBe(275);
+    expect(next.costComponents.find((item) => item.id === "handling")?.inputs[0].quantity).toBe(275);
+    expect(next.outcome.annualValue).toBe(calculateAnnualValue(275, 2, 38.75));
+    expect(claimsPayoffCopy(next)).toContain("275 × 2 × $38.75 → $21,313/day");
+    expect(claimsArtifactCopy(next).headline).toBe("275 × 2 × $38.75 = $21,313 / day");
+    expect(claimsArtifactCopy(next).detail).toContain("$5,328,250 per year");
+  });
+
+  it.each([null, 0, -1, 1.5, Number.POSITIVE_INFINITY])(
+    "does not complete exact claims for invalid quantity %s",
+    (quantity) => {
+      const exactSelected = applyClaimsVolumeChoice(
+        initialSessionGraph,
+        "exact",
+      );
+      const next = applyExactClaimsVolume(exactSelected, quantity);
+
+      expect(next.valueInputs.find((input) => input.id === "claims")?.quantity).toBeNull();
+      expect(next.outcome.annualValue).toBe(0);
+      expect(claimsPayoffCopy(next)).toBe("");
+      expect(claimsArtifactCopy(next).headline).toBe("Value inputs not captured yet");
+    },
+  );
+
   it("lists each confirmer once on the artifact", () => {
     expect(inputsConfirmedByCopy(initialSessionGraph)).toBe(
       "Inputs confirmed by Michelle Dorsey and Dana Reyes.",
@@ -544,13 +577,49 @@ describe("partner session notes", () => {
     updatedAt: "2026-09-23T15:00:00.000Z",
   };
 
-  it("adds and edits partner context without changing captured testimony", () => {
-    const added = savePartnerNote(initialSessionGraph, note);
-    const edited = savePartnerNote(added, { ...note, text: "Claims leadership wants an October review." });
+  it("replaces existing partner context without changing captured testimony", () => {
+    const existing = {
+      ...initialSessionGraph,
+      partnerNotes: [
+        note,
+        {
+          ...note,
+          id: "partner-note-2",
+          text: "Older context that should be replaced.",
+          updatedAt: "2026-09-23T14:00:00.000Z",
+        },
+      ],
+    };
+    const replacement = {
+      ...note,
+      id: "partner-note-3",
+      text: "Claims leadership wants an October review.",
+      updatedAt: "2026-09-23T16:00:00.000Z",
+    };
+    const saved = savePartnerNote(existing, replacement);
 
-    expect(added.partnerNotes).toEqual([note]);
-    expect(edited.partnerNotes[0].text).toBe("Claims leadership wants an October review.");
-    expect(edited.captures).toEqual(initialSessionGraph.captures);
+    expect(saved.partnerNotes).toEqual([replacement]);
+    expect(saved.captures).toEqual(initialSessionGraph.captures);
+  });
+
+  it("hydrates only the most recently updated persisted partner context", () => {
+    const newest = {
+      ...note,
+      id: "partner-note-2",
+      text: "Newest context.",
+      updatedAt: "2026-09-23T16:00:00.000Z",
+    };
+    const persisted = {
+      ...initialSessionGraph,
+      partnerNotes: [
+        newest,
+        note,
+        { ...note, id: "partner-note-3", updatedAt: "invalid timestamp" },
+      ],
+    };
+
+    expect(hydrateSessionGraph(persisted).partnerNotes).toEqual([newest]);
+    expect(hydrateSessionGraph(persisted).captures).toEqual(initialSessionGraph.captures);
   });
 
   it("hydrates an existing v3 graph without partner notes", () => {

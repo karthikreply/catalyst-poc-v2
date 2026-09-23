@@ -18,6 +18,7 @@ import {
   applyClaimsVolumeChoice,
   applyColdScope,
   applyDeliveryMode,
+  applyExactClaimsVolume,
   applyFundingRoute,
   applyMechanic,
   applyPatternChoice,
@@ -51,6 +52,7 @@ type SessionContextValue = {
   addCapture: (capture: Omit<Capture, "id" | "sessionId" | "capturedAt">) => void;
   setActiveStep: (stepId: string) => void;
   applyClaimsChoice: (choice: ClaimsVolumeChoice) => void;
+  applyExactClaims: (quantity: number | null) => void;
   applyFunding: (route: FundingRoute) => void;
   applyPattern: (patternId: string) => void;
   applyReusePilot: (reuse: boolean) => void;
@@ -203,6 +205,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setGraph((current) => applyClaimsVolumeChoice(current, choice));
   }
 
+  function applyExactClaims(quantity: number | null) {
+    if (!canEditSession) return;
+    setGraph((current) => (
+      current.session.claimsVolumeChoice === "exact"
+        ? applyExactClaimsVolume(current, quantity)
+        : current
+    ));
+  }
+
   function applyFunding(route: FundingRoute) {
     if (!canEditSession) return;
     setGraph((current) => applyFundingRoute(current, route));
@@ -280,6 +291,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     addCapture,
     setActiveStep,
     applyClaimsChoice,
+    applyExactClaims,
     applyFunding,
     applyPattern,
     applyReusePilot,

@@ -82,14 +82,8 @@ ${people.signoff}`;
       {graph.partnerNotes.length > 0 && (
         <section aria-labelledby="partner-context-heading" className="mt-6 rounded-sm border border-[var(--brand-accent)]/25 bg-[color-mix(in_srgb,var(--brand-accent)_4%,white)] p-5">
           <h2 id="partner-context-heading" className="font-semibold">Partner context</h2>
-          <div className="mt-3 space-y-3">
-            {graph.partnerNotes.map((note) => (
-              <article key={note.id}>
-                <p className="text-sm leading-6 text-black/70">{note.text}</p>
-                <p className="mt-1 text-xs text-black/48">Added by {note.author} · partner input</p>
-              </article>
-            ))}
-          </div>
+          <p className="mt-3 text-sm leading-6 text-black/70">{graph.partnerNotes[0].text}</p>
+          <p className="mt-1 text-xs text-black/48">Added by {graph.partnerNotes[0].author} · partner input</p>
         </section>
       )}
 

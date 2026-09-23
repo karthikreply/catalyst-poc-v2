@@ -14,11 +14,13 @@ import {
   heartlandAccountRecord,
   prmBadge,
 } from "@/lib/seed/accountRecord";
+import type { PartnerNote } from "@/lib/seed";
 import {
   canViewPartnerScope,
   claimsPayoffCopy,
   coldRoleMatch,
   coldScopeDefaults,
+  isValidExactClaimsVolume,
   missingColdRoles,
   type ClaimsVolumeChoice,
   type FundingRoute,
@@ -30,6 +32,7 @@ const claimsChoices: { label: string; value: ClaimsVolumeChoice }[] = [
   { label: "~400 a day", value: "about-400" },
   { label: "250–500 a day", value: "range-250-500" },
   { label: "Not confirmed yet", value: "unconfirmed" },
+  { label: "Enter exact number", value: "exact" },
 ];
 
 const roleExamples = [
@@ -48,6 +51,7 @@ export default function ScopePage() {
     viewer,
     canEditSession,
     applyClaimsChoice,
+    applyExactClaims,
     applyFunding,
     applyPattern,
     applyReusePilot,
@@ -56,13 +60,17 @@ export default function ScopePage() {
     restoreSeededScope,
   } = useSession();
   const mode = graph.session.scopeMode;
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [noteDraft, setNoteDraft] = useState("");
+  const partnerContext = graph.partnerNotes[0] ?? null;
+  const claimsQuantity = graph.valueInputs.find((input) => input.id === "claims")?.quantity ?? null;
   const fundingRef = useRef<HTMLDivElement>(null);
   const observation = mode === "seeded" ? deriveKarenObservation(heartlandAccountRecord) : null;
   const claimsChoice = graph.session.claimsVolumeChoice;
   const fundingRoute = graph.session.fundingRoute;
-  const seededComplete = Boolean(claimsChoice && fundingRoute);
+  const claimsComplete = Boolean(
+    claimsChoice
+    && (claimsChoice !== "exact" || isValidExactClaimsVolume(claimsQuantity)),
+  );
+  const seededComplete = Boolean(claimsComplete && fundingRoute);
   const coldCompany = graph.coldCompany ?? coldScopeDefaults.company;
   const coldAttendees = graph.coldAttendees.length ? graph.coldAttendees : coldScopeDefaults.attendees;
   const companyComplete = Boolean(coldCompany.name.trim() && coldCompany.industry.trim() && coldCompany.sizeBand.trim());
@@ -72,9 +80,9 @@ export default function ScopePage() {
   const scopeComplete = mode === "seeded" ? seededComplete : coldComplete;
   const missingAttendeeCount = Math.max(0, 3 - completeAttendees.length);
   const scopeGuidance = mode === "seeded"
-    ? !claimsChoice && !fundingRoute
+    ? !claimsComplete && !fundingRoute
       ? "Confirm claims volume and funding route."
-      : !claimsChoice
+      : !claimsComplete
         ? "Confirm claims volume."
         : !fundingRoute
           ? "Confirm funding route."
@@ -105,14 +113,6 @@ export default function ScopePage() {
   function clearToColdMode() {
     if (!canEditSession) return;
     setColdScope(coldScopeDefaults.company, coldScopeDefaults.attendees);
-  }
-
-  function submitPartnerNote(event: FormEvent) {
-    event.preventDefault();
-    if (!canEditSession || !noteDraft.trim()) return;
-    savePartnerNote(editingNoteId, noteDraft);
-    setEditingNoteId(null);
-    setNoteDraft("");
   }
 
   if (!canViewPartnerScope(viewer.actor)) {
@@ -223,57 +223,17 @@ export default function ScopePage() {
             <section className="rounded-sm border border-[var(--brand-accent)]/35 bg-[color-mix(in_srgb,var(--brand-accent)_4%,white)] p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-semibold">Partner additions</h2>
+                  <h2 className="font-semibold">Partner context</h2>
                   <p className="mt-1 text-xs font-medium text-black/48">Partner input · not from CRM</p>
                 </div>
               </div>
 
-              <div className="mt-4 space-y-3">
-                {graph.partnerNotes.map((note) => (
-                  <article key={note.id} className="rounded-sm border border-black/10 bg-white p-4">
-                    <p className="text-sm leading-6 text-black/70">{note.text}</p>
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <p className="text-xs text-black/48">Added by {note.author}</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={!canEditSession}
-                        onClick={() => {
-                          setEditingNoteId(note.id);
-                          setNoteDraft(note.text);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                  </article>
-                ))}
-                {graph.partnerNotes.length === 0 && (
-                  <p className="text-sm text-black/52">No partner notes added yet.</p>
-                )}
-              </div>
-
-              <form onSubmit={submitPartnerNote} className="mt-4">
-                <label className="text-sm font-medium">
-                  {editingNoteId ? "Edit partner note" : "Add context for the session"}
-                  <Textarea
-                    value={noteDraft}
-                    disabled={!canEditSession}
-                    onChange={(event) => setNoteDraft(event.target.value)}
-                    placeholder="Add partner context that is not in CRM…"
-                    className="mt-2 rounded-sm bg-white"
-                  />
-                </label>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!canEditSession || !noteDraft.trim()}
-                  className="mt-3"
-                >
-                  {editingNoteId ? "Save note" : "Add partner note"}
-                </Button>
-              </form>
+              <PartnerContextForm
+                key={partnerContext?.id ?? "new-partner-context"}
+                context={partnerContext}
+                canEdit={canEditSession}
+                onSave={savePartnerNote}
+              />
 
               <div className="mt-5 border-t border-black/10 pt-4">
                 <p className="text-xs font-medium text-black/45">Pattern</p>
@@ -387,7 +347,14 @@ export default function ScopePage() {
                     </ChoiceChip>
                   ))}
                 </div>
-                {claimsChoice && (
+                {claimsChoice === "exact" && (
+                  <ExactClaimsField
+                    quantity={claimsQuantity}
+                    disabled={!canEditSession}
+                    onChange={applyExactClaims}
+                  />
+                )}
+                {claimsChoice && claimsPayoffCopy(graph) && (
                   <p className="mt-3 whitespace-pre-line rounded-sm bg-[#fafaf8] p-3 text-sm leading-6 text-black/72">
                     {claimsPayoffCopy(graph)}
                   </p>
@@ -528,6 +495,95 @@ export default function ScopePage() {
 
           </section>
         </div>
+      )}
+    </div>
+  );
+}
+
+function PartnerContextForm({
+  context,
+  canEdit,
+  onSave,
+}: {
+  context: PartnerNote | null;
+  canEdit: boolean;
+  onSave: (noteId: string | null, text: string) => void;
+}) {
+  const [draft, setDraft] = useState(context?.text ?? "");
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!canEdit || !draft.trim()) return;
+    onSave(context?.id ?? null, draft);
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4">
+      <label className="text-sm font-medium">
+        Partner context
+        <Textarea
+          value={draft}
+          disabled={!canEdit}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Add partner context that is not in CRM…"
+          className="mt-2 rounded-sm bg-white"
+        />
+      </label>
+      <Button
+        type="submit"
+        size="sm"
+        disabled={!canEdit || !draft.trim()}
+        className="mt-3"
+      >
+        Save context
+      </Button>
+    </form>
+  );
+}
+
+function ExactClaimsField({
+  quantity,
+  disabled,
+  onChange,
+}: {
+  quantity: number | null;
+  disabled: boolean;
+  onChange: (quantity: number | null) => void;
+}) {
+  const [draft, setDraft] = useState(
+    isValidExactClaimsVolume(quantity) ? String(quantity) : "",
+  );
+  const parsed = draft === "" ? null : Number(draft);
+  const valid = isValidExactClaimsVolume(parsed);
+
+  function update(value: string) {
+    setDraft(value);
+    onChange(value === "" ? null : Number(value));
+  }
+
+  return (
+    <div className="mt-3">
+      <label htmlFor="exact-claims" className="text-xs font-medium text-black/58">
+        Claims per day
+      </label>
+      <Input
+        id="exact-claims"
+        aria-label="Exact claims per day"
+        aria-describedby="exact-claims-guidance"
+        aria-invalid={draft !== "" && !valid}
+        type="number"
+        min={1}
+        step={1}
+        inputMode="numeric"
+        value={draft}
+        disabled={disabled}
+        onChange={(event) => update(event.target.value)}
+        className="mt-2"
+      />
+      {!valid && (
+        <p id="exact-claims-guidance" role="status" className="mt-2 text-xs text-amber-800">
+          Enter a positive whole number of claims.
+        </p>
       )}
     </div>
   );

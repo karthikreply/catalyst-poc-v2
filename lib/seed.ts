@@ -32,7 +32,7 @@ export type Session = {
   ledgerFrozen: boolean;
   fundingRoute: "invite-karen" | "brief-dana" | null;
   reusePriorPilotSpec: boolean | null;
-  claimsVolumeChoice: "about-400" | "range-250-500" | "unconfirmed" | null;
+  claimsVolumeChoice: "about-400" | "range-250-500" | "unconfirmed" | "exact" | null;
   scopeMode: ScopeMode;
 };
 

@@ -15,7 +15,7 @@ import {
 import { calculateAnnualValue, calculateDailyValue, formatCurrency, formatPreciseCurrency } from "./value";
 
 export type Viewer = { actor: Actor; name: string; org: string };
-export type ClaimsVolumeChoice = "about-400" | "range-250-500" | "unconfirmed";
+export type ClaimsVolumeChoice = "about-400" | "range-250-500" | "unconfirmed" | "exact";
 export type FundingRoute = "invite-karen" | "brief-dana";
 
 const coldRoleRules = [
@@ -74,11 +74,23 @@ function emptyCostComponents() {
   }));
 }
 
+function latestPartnerNote(notes: PartnerNote[]) {
+  return notes.reduce<PartnerNote | null>((latest, note) => {
+    if (!latest) return note;
+    const noteTime = Date.parse(note.updatedAt);
+    const latestTime = Date.parse(latest.updatedAt);
+    if (Number.isNaN(noteTime)) return latest;
+    if (Number.isNaN(latestTime) || noteTime > latestTime) return note;
+    return latest;
+  }, null);
+}
+
 export function hydrateSessionGraph(value: SessionGraph | null): SessionGraph {
   if (!value?.session) return initialSessionGraph;
   const cold = value.session.scopeMode === "cold";
   const legacyCold = cold && value.session.id !== "cold-session";
   const sessionId = cold ? "cold-session" : value.session.id;
+  const partnerNote = latestPartnerNote(value.partnerNotes ?? []);
   const agenda = legacyCold
     ? (value.agenda ?? initialSessionGraph.agenda).map((step, index) => ({
         ...step,
@@ -119,7 +131,7 @@ export function hydrateSessionGraph(value: SessionGraph | null): SessionGraph {
         : value.costComponents ?? initialSessionGraph.costComponents,
     agenda,
     captures: legacyCold ? [] : value.captures ?? (cold ? [] : initialSessionGraph.captures),
-    partnerNotes: value.partnerNotes ?? [],
+    partnerNotes: partnerNote ? [partnerNote] : [],
     attendees: cold
       ? value.attendees ?? []
       : value.attendees?.length
@@ -199,12 +211,9 @@ export function applyColdScope(
 }
 
 export function savePartnerNote(graph: SessionGraph, note: PartnerNote): SessionGraph {
-  const exists = graph.partnerNotes.some((item) => item.id === note.id);
   return {
     ...graph,
-    partnerNotes: exists
-      ? graph.partnerNotes.map((item) => item.id === note.id ? note : item)
-      : [...graph.partnerNotes, note],
+    partnerNotes: [note],
   };
 }
 
@@ -377,17 +386,24 @@ export function bindAnnualValue(graph: SessionGraph): SessionGraph {
 }
 
 export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolumeChoice): SessionGraph {
-  const quantity = choice === "range-250-500" ? 375 : 400;
-  const confirmedBy = choice === "unconfirmed" ? null : graph.valueInputs.find((input) => input.id === "claims")?.confirmedBy ?? "Michelle Dorsey";
+  const quantity = choice === "exact" ? null : choice === "range-250-500" ? 375 : 400;
+  const confirmedBy = choice === "unconfirmed" || choice === "exact"
+    ? null
+    : graph.valueInputs.find((input) => input.id === "claims")?.confirmedBy ?? "Michelle Dorsey";
   const valueInputs = graph.valueInputs.map((input) =>
     input.id === "claims"
-      ? { ...input, quantity, confirmedBy: choice === "unconfirmed" ? null : confirmedBy, respondentConfirmed: choice !== "unconfirmed" }
+      ? {
+          ...input,
+          quantity,
+          confirmedBy,
+          respondentConfirmed: choice !== "unconfirmed" && choice !== "exact",
+        }
       : input,
   );
   const costComponents = graph.costComponents.map((component) => ({
     ...component,
     confirmedBy: component.id === "handling"
-      ? choice === "unconfirmed"
+      ? choice === "unconfirmed" || choice === "exact"
         ? null
         : component.confirmedBy ?? "Michelle Dorsey"
       : component.confirmedBy,
@@ -404,6 +420,48 @@ export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolum
   });
 }
 
+export function isValidExactClaimsVolume(quantity: number | null) {
+  return typeof quantity === "number"
+    && Number.isFinite(quantity)
+    && Number.isInteger(quantity)
+    && quantity > 0;
+}
+
+export function applyExactClaimsVolume(graph: SessionGraph, quantity: number | null): SessionGraph {
+  if (graph.session.claimsVolumeChoice !== "exact") return graph;
+  const validQuantity = isValidExactClaimsVolume(quantity) ? quantity : null;
+  const confirmedBy = validQuantity === null
+    ? null
+    : graph.valueInputs.find((input) => input.id === "claims")?.confirmedBy ?? "Michelle Dorsey";
+  const valueInputs = graph.valueInputs.map((input) =>
+    input.id === "claims"
+      ? {
+          ...input,
+          quantity: validQuantity,
+          confirmedBy,
+          respondentConfirmed: validQuantity !== null,
+        }
+      : input,
+  );
+  const costComponents = graph.costComponents.map((component) => ({
+    ...component,
+    confirmedBy: component.id === "handling"
+      ? validQuantity === null
+        ? null
+        : component.confirmedBy ?? "Michelle Dorsey"
+      : component.confirmedBy,
+    inputs: component.inputs.map((input) =>
+      input.label === "Claims per day" ? { ...input, quantity: validQuantity } : input,
+    ),
+  }));
+  return bindAnnualValue({
+    ...graph,
+    valueInputs,
+    costComponents,
+    outcome: { ...graph.outcome, partiallyEstimated: validQuantity === null },
+  });
+}
+
 export function claimsPayoffCopy(graph: SessionGraph) {
   const claims = graph.valueInputs.find((input) => input.id === "claims");
   const delay = graph.valueInputs.find((input) => input.id === "delay");
@@ -417,7 +475,8 @@ export function claimsPayoffCopy(graph: SessionGraph) {
   }
   const daily = formatCurrency(calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!));
   const millions = (calculateAnnualValue(claims.quantity!, delay.quantity!, handling.quantity!) / 1_000_000).toFixed(2).replace(/\.00$/, "");
-  return `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity!)} → ${daily}/day · $${millions}M/year · top of the library range`;
+  const estimate = `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity!)} → ${daily}/day · $${millions}M/year`;
+  return graph.session.claimsVolumeChoice === "exact" ? estimate : `${estimate} · top of the library range`;
 }
 
 export function inputsConfirmedByCopy(graph: SessionGraph) {
