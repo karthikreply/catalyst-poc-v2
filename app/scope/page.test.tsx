@@ -1,7 +1,13 @@
+// @vitest-environment jsdom
+
+import "@testing-library/jest-dom/vitest";
+import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initialSessionGraph } from "@/lib/seed";
+import { applyClaimsVolumeChoice, applyExactClaimsVolume } from "@/lib/session";
 
 const { useSessionMock } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
@@ -12,6 +18,38 @@ vi.mock("@/components/session-provider", () => ({
 }));
 
 import ScopePage from "./page";
+
+beforeEach(() => {
+  useSessionMock.mockReset();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+function useInteractiveSession() {
+  const [graph, setGraph] = useState(initialSessionGraph);
+
+  return {
+    graph,
+    brand: { partnerName: "CDW" },
+    viewer: { actor: "partner", name: "Ravi Menon", org: "CDW" },
+    canEditSession: true,
+    applyClaimsChoice: (choice: Parameters<typeof applyClaimsVolumeChoice>[1]) => {
+      setGraph((current) => applyClaimsVolumeChoice(current, choice));
+    },
+    applyExactClaims: (quantity: number | null) => {
+      setGraph((current) => applyExactClaimsVolume(current, quantity));
+    },
+    applyFunding: vi.fn(),
+    applyPattern: vi.fn(),
+    applyReusePilot: vi.fn(),
+    savePartnerNote: vi.fn(),
+    setColdScope: vi.fn(),
+    restoreSeededScope: vi.fn(),
+  };
+}
 
 function renderVendorScope(complete: boolean) {
   useSessionMock.mockReturnValue({
@@ -57,10 +95,6 @@ function renderPartnerScope() {
 }
 
 describe("read-only vendor Scope navigation", () => {
-  beforeEach(() => {
-    useSessionMock.mockReset();
-  });
-
   it("shows disabled plan navigation until scope is complete", () => {
     const markup = renderVendorScope(false);
 
@@ -125,8 +159,11 @@ describe("exact claims volume", () => {
 
     expect(markup).toContain("Enter exact number");
     expect(markup).toContain('type="number"');
-    expect(markup).toContain('aria-label="Exact claims per day"');
+    expect(markup).not.toContain('aria-label="Exact claims per day"');
+    expect(markup).toContain('aria-describedby="exact-claims-guidance"');
+    expect(markup).toContain('id="exact-claims-guidance"');
     expect(markup).toContain("Enter a positive whole number of claims.");
+    expect(markup).not.toContain('id="exact-claims-guidance" role="status"');
     expect(markup).not.toContain('href="/plan"');
   });
 
@@ -159,7 +196,25 @@ describe("exact claims volume", () => {
     const markup = renderToStaticMarkup(<ScopePage />);
 
     expect(markup).toContain('value="275"');
+    expect(markup).toContain('id="exact-claims-guidance"');
     expect(markup).toContain('href="/plan"');
     expect(markup).toContain("Scope complete.");
+  });
+
+  it("selects exact and enters a value without scrolling away from the field", () => {
+    const requestAnimationFrame = vi.fn();
+    vi.stubGlobal("requestAnimationFrame", requestAnimationFrame);
+    useSessionMock.mockImplementation(useInteractiveSession);
+
+    render(<ScopePage />);
+    fireEvent.click(screen.getByRole("button", { name: "Enter exact number" }));
+
+    const input = screen.getByRole("spinbutton", { name: "Claims per day" });
+    fireEvent.change(input, { target: { value: "275" } });
+
+    expect(input).toHaveValue(275);
+    expect(input).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByText("Enter a positive whole number of claims.")).not.toHaveAttribute("role");
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
   });
 });

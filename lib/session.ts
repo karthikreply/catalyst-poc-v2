@@ -386,6 +386,8 @@ export function bindAnnualValue(graph: SessionGraph): SessionGraph {
 }
 
 export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolumeChoice): SessionGraph {
+  if (choice === "exact" && graph.session.claimsVolumeChoice === "exact") return graph;
+
   const quantity = choice === "exact" ? null : choice === "range-250-500" ? 375 : 400;
   const confirmedBy = choice === "unconfirmed" || choice === "exact"
     ? null
@@ -402,11 +404,6 @@ export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolum
   );
   const costComponents = graph.costComponents.map((component) => ({
     ...component,
-    confirmedBy: component.id === "handling"
-      ? choice === "unconfirmed" || choice === "exact"
-        ? null
-        : component.confirmedBy ?? "Michelle Dorsey"
-      : component.confirmedBy,
     inputs: component.inputs.map((input) =>
       input.label === "Claims per day" ? { ...input, quantity } : input,
     ),
@@ -422,43 +419,35 @@ export function applyClaimsVolumeChoice(graph: SessionGraph, choice: ClaimsVolum
 
 export function isValidExactClaimsVolume(quantity: number | null) {
   return typeof quantity === "number"
-    && Number.isFinite(quantity)
-    && Number.isInteger(quantity)
+    && Number.isSafeInteger(quantity)
     && quantity > 0;
 }
 
 export function applyExactClaimsVolume(graph: SessionGraph, quantity: number | null): SessionGraph {
   if (graph.session.claimsVolumeChoice !== "exact") return graph;
   const validQuantity = isValidExactClaimsVolume(quantity) ? quantity : null;
-  const confirmedBy = validQuantity === null
-    ? null
-    : graph.valueInputs.find((input) => input.id === "claims")?.confirmedBy ?? "Michelle Dorsey";
   const valueInputs = graph.valueInputs.map((input) =>
     input.id === "claims"
       ? {
           ...input,
           quantity: validQuantity,
-          confirmedBy,
-          respondentConfirmed: validQuantity !== null,
+          confirmedBy: null,
+          respondentConfirmed: false,
         }
       : input,
   );
   const costComponents = graph.costComponents.map((component) => ({
     ...component,
-    confirmedBy: component.id === "handling"
-      ? validQuantity === null
-        ? null
-        : component.confirmedBy ?? "Michelle Dorsey"
-      : component.confirmedBy,
     inputs: component.inputs.map((input) =>
       input.label === "Claims per day" ? { ...input, quantity: validQuantity } : input,
     ),
   }));
   return bindAnnualValue({
     ...graph,
+    session: { ...graph.session, ledgerFrozen: false },
     valueInputs,
     costComponents,
-    outcome: { ...graph.outcome, partiallyEstimated: validQuantity === null },
+    outcome: { ...graph.outcome, partiallyEstimated: true },
   });
 }
 
@@ -467,6 +456,11 @@ export function claimsPayoffCopy(graph: SessionGraph) {
   const delay = graph.valueInputs.find((input) => input.id === "delay");
   const handling = graph.valueInputs.find((input) => input.id === "handling");
   if (!claims || !delay || !handling || !hasCompleteValueInputs(graph)) return "";
+  if (graph.session.claimsVolumeChoice === "exact") {
+    const daily = formatCurrency(calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!));
+    const millions = (calculateAnnualValue(claims.quantity!, delay.quantity!, handling.quantity!) / 1_000_000).toFixed(2).replace(/\.00$/, "");
+    return `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity!)} → ${daily}/day · $${millions}M/year`;
+  }
   if (!claims.confirmedBy) {
     return "Artifact will label this an unconfirmed estimate.";
   }
@@ -476,7 +470,26 @@ export function claimsPayoffCopy(graph: SessionGraph) {
   const daily = formatCurrency(calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!));
   const millions = (calculateAnnualValue(claims.quantity!, delay.quantity!, handling.quantity!) / 1_000_000).toFixed(2).replace(/\.00$/, "");
   const estimate = `${claims.quantity} × ${delay.quantity} × ${formatPreciseCurrency(handling.quantity!)} → ${daily}/day · $${millions}M/year`;
-  return graph.session.claimsVolumeChoice === "exact" ? estimate : `${estimate} · top of the library range`;
+  return `${estimate} · top of the library range`;
+}
+
+export function claimsVolumeProvenanceCopy(graph: SessionGraph) {
+  if (graph.session.claimsVolumeChoice === "exact") {
+    return "Volume entered by partner in Scope · not respondent-confirmed";
+  }
+  if (graph.session.claimsVolumeChoice === "range-250-500") {
+    return "Volume supplied as a range · midpoint used only for planning inputs.";
+  }
+  if (graph.session.claimsVolumeChoice === "unconfirmed") {
+    return "No respondent confirmation yet.";
+  }
+  if (graph.session.delivery === "self-service") {
+    return "Respondent-confirmed · not facilitator-verified";
+  }
+  const claims = graph.valueInputs.find((input) => input.id === "claims");
+  return claims?.confirmedBy
+    ? inputsConfirmedByCopy(graph)
+    : "Volume is an unconfirmed estimate from scope.";
 }
 
 export function inputsConfirmedByCopy(graph: SessionGraph) {

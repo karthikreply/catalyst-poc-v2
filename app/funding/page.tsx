@@ -7,7 +7,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
 import { ledgerAnnualTotal } from "@/lib/cost-model";
-import { claimsArtifactCopy, hasCompleteCostComponents, hasCompleteValueInputs } from "@/lib/session";
+import {
+  claimsArtifactCopy,
+  claimsVolumeProvenanceCopy,
+  hasCompleteCostComponents,
+  hasCompleteValueInputs,
+} from "@/lib/session";
 import { formatCurrency } from "@/lib/value";
 
 function useFundingData() {
@@ -87,6 +92,9 @@ function PartnerFundingRequest({ data }: { data: ReturnType<typeof useFundingDat
               </ul>
             ) : <p className="mt-3 text-sm text-black/55">No attributed evidence has been captured yet.</p>}
             {claims.status && <p className="mt-4 text-sm text-amber-800">{claims.status}</p>}
+            {graph.session.claimsVolumeChoice === "exact" && (
+              <p className="mt-4 text-sm text-black/55">{claimsVolumeProvenanceCopy(graph)}</p>
+            )}
           </div>
         </section>
 
@@ -157,6 +165,11 @@ function VendorFundingReview({ data }: { data: ReturnType<typeof useFundingData>
               </ul>
             ) : <p className="md-body-medium mt-4 text-[var(--md-sys-color-on-surface-variant)]">No attributed evidence has been captured yet.</p>}
             {claims.status && <p className="md-body-medium mt-4 text-[var(--md-sys-color-on-surface-variant)]">{claims.status}</p>}
+            {graph.session.claimsVolumeChoice === "exact" && (
+              <p className="md-body-medium mt-4 text-[var(--md-sys-color-on-surface-variant)]">
+                {claimsVolumeProvenanceCopy(graph)}
+              </p>
+            )}
           </div>
         </section>
 

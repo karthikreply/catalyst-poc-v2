@@ -18,9 +18,9 @@ import {
   artifactLimitsCopy,
   artifactPilotScopeCopy,
   claimsArtifactCopy,
+  claimsVolumeProvenanceCopy,
   fundingAskCopy,
   hasCompleteCostComponents,
-  inputsConfirmedByCopy,
 } from "@/lib/session";
 
 function componentArithmetic(component: CostComponent) {
@@ -49,7 +49,6 @@ function componentArithmetic(component: CostComponent) {
 export default function ArtifactPage() {
   const { graph, brand, viewer } = useSession();
   const people = withBrandPeople(brand);
-  const claims = graph.valueInputs.find((input) => input.id === "claims")!;
   const claimsCopy = claimsArtifactCopy(graph);
   const problemQuotes = (graph.session.scopeMode === "cold"
     ? graph.captures
@@ -219,15 +218,7 @@ export default function ArtifactPage() {
                 {claimsCopy.status && <p className="mt-1 text-sm font-medium text-amber-800">{claimsCopy.status}</p>}
                 {selfService && <p className="mt-1 text-sm font-medium text-amber-800">Unverified estimate</p>}
                 <p className="mt-2 text-xs text-black/42">
-                  {graph.session.claimsVolumeChoice === "range-250-500"
-                    ? "Volume supplied as a range · midpoint used only for planning inputs."
-                    : graph.session.claimsVolumeChoice === "unconfirmed"
-                      ? "No respondent confirmation yet."
-                      : selfService
-                    ? "Respondent-confirmed · not facilitator-verified"
-                    : claims.confirmedBy
-                      ? inputsConfirmedByCopy(graph)
-                      : "Volume is an unconfirmed estimate from scope."}
+                  {claimsVolumeProvenanceCopy(graph)}
                 </p>
               </>
             )}

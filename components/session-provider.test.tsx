@@ -9,9 +9,6 @@ import { initialSessionGraph } from "@/lib/seed";
 import { SessionProvider, useSession } from "./session-provider";
 
 function SessionActionsProbe() {
-  const session = useSession() as ReturnType<typeof useSession> & {
-    applyExactClaims: (quantity: number | null) => void;
-  };
   const {
     graph,
     viewer,
@@ -19,18 +16,21 @@ function SessionActionsProbe() {
     updateValueConfirmer,
     applyClaimsChoice,
     applyExactClaims,
-  } = session;
+  } = useSession();
   const claims = graph.valueInputs.find((input) => input.id === "claims");
+  const handling = graph.costComponents.find((component) => component.id === "handling");
 
   return (
     <>
       <output aria-label="actor">{viewer.actor}</output>
       <output aria-label="partner-note-count">{graph.partnerNotes.length}</output>
       <output aria-label="claims-confirmer">{claims?.confirmedBy ?? "none"}</output>
+      <output aria-label="claims-respondent-confirmed">{String(claims?.respondentConfirmed)}</output>
       <output aria-label="claims-quantity">{claims?.quantity ?? "none"}</output>
+      <output aria-label="handling-confirmer">{handling?.confirmedBy ?? "none"}</output>
       <button type="button" onClick={() => savePartnerNote(null, "Partner context")}>Save note</button>
       <button type="button" onClick={() => updateValueConfirmer("claims", "Alex Chen")}>Update confirmer</button>
-      <button type="button" onClick={() => applyClaimsChoice("exact" as never)}>Select exact</button>
+      <button type="button" onClick={() => applyClaimsChoice("exact")}>Select exact</button>
       <button type="button" onClick={() => applyExactClaims(275)}>Set exact claims</button>
       <button type="button" onClick={() => applyExactClaims(0)}>Clear invalid exact claims</button>
     </>
@@ -93,8 +93,23 @@ describe("SessionProvider action permissions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Set exact claims" }));
     expect(screen.getByLabelText("claims-quantity")).toHaveTextContent("275");
+    expect(screen.getByLabelText("claims-confirmer")).toHaveTextContent("none");
+    expect(screen.getByLabelText("claims-respondent-confirmed")).toHaveTextContent("false");
+    expect(screen.getByLabelText("handling-confirmer")).toHaveTextContent("Michelle Dorsey");
 
     fireEvent.click(screen.getByRole("button", { name: "Clear invalid exact claims" }));
     expect(screen.getByLabelText("claims-quantity")).toHaveTextContent("none");
+  });
+
+  it("does not apply exact claims for CPM", async () => {
+    renderForActor("cpm");
+    await waitFor(() => expect(screen.getByLabelText("actor")).toHaveTextContent("cpm"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Select exact" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set exact claims" }));
+
+    expect(screen.getByLabelText("claims-quantity")).toHaveTextContent("400");
+    expect(screen.getByLabelText("claims-confirmer")).toHaveTextContent("Michelle Dorsey");
+    expect(screen.getByLabelText("claims-respondent-confirmed")).toHaveTextContent("true");
   });
 });

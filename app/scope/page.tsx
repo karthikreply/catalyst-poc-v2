@@ -103,7 +103,7 @@ export default function ScopePage() {
 
   function chooseClaims(choice: ClaimsVolumeChoice) {
     applyClaimsChoice(choice);
-    if (!fundingRoute) revealFunding();
+    if (choice !== "exact" && !fundingRoute) revealFunding();
   }
 
   function chooseFunding(route: FundingRoute) {
@@ -568,11 +568,11 @@ function ExactClaimsField({
       </label>
       <Input
         id="exact-claims"
-        aria-label="Exact claims per day"
         aria-describedby="exact-claims-guidance"
         aria-invalid={draft !== "" && !valid}
         type="number"
         min={1}
+        max={Number.MAX_SAFE_INTEGER}
         step={1}
         inputMode="numeric"
         value={draft}
@@ -580,11 +580,12 @@ function ExactClaimsField({
         onChange={(event) => update(event.target.value)}
         className="mt-2"
       />
-      {!valid && (
-        <p id="exact-claims-guidance" role="status" className="mt-2 text-xs text-amber-800">
-          Enter a positive whole number of claims.
-        </p>
-      )}
+      <p
+        id="exact-claims-guidance"
+        className={cn("mt-2 text-xs", draft !== "" && !valid ? "text-amber-800" : "text-black/48")}
+      >
+        Enter a positive whole number of claims.
+      </p>
     </div>
   );
 }

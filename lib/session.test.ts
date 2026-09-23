@@ -19,6 +19,7 @@ import {
   canViewPartnerScope,
   claimsArtifactCopy,
   claimsPayoffCopy,
+  claimsVolumeProvenanceCopy,
   coldRoleMatch,
   coldScopeDefaults,
   fundingAskCopy,
@@ -281,22 +282,33 @@ describe("scope decisions", () => {
   });
 
   it("uses a valid exact claims volume in quantity, arithmetic, and artifact copy", () => {
-    const exactSelected = applyClaimsVolumeChoice(
-      initialSessionGraph,
-      "exact",
-    );
+    const graphWithIndependentHandlingConfirmer = {
+      ...initialSessionGraph,
+      session: { ...initialSessionGraph.session, ledgerFrozen: true },
+      costComponents: initialSessionGraph.costComponents.map((component) =>
+        component.id === "handling" ? { ...component, confirmedBy: "Alex Chen" } : component,
+      ),
+    };
+    const exactSelected = applyClaimsVolumeChoice(graphWithIndependentHandlingConfirmer, "exact");
     const next = applyExactClaimsVolume(exactSelected, 275);
     const claims = next.valueInputs.find((input) => input.id === "claims");
 
     expect(claims?.quantity).toBe(275);
+    expect(claims?.confirmedBy).toBeNull();
+    expect(claims?.respondentConfirmed).toBe(false);
     expect(next.costComponents.find((item) => item.id === "handling")?.inputs[0].quantity).toBe(275);
+    expect(next.costComponents.find((item) => item.id === "handling")?.confirmedBy).toBe("Alex Chen");
+    expect(next.session.ledgerFrozen).toBe(false);
     expect(next.outcome.annualValue).toBe(calculateAnnualValue(275, 2, 38.75));
     expect(claimsPayoffCopy(next)).toContain("275 × 2 × $38.75 → $21,313/day");
     expect(claimsArtifactCopy(next).headline).toBe("275 × 2 × $38.75 = $21,313 / day");
     expect(claimsArtifactCopy(next).detail).toContain("$5,328,250 per year");
+    expect(claimsVolumeProvenanceCopy(next)).toBe(
+      "Volume entered by partner in Scope · not respondent-confirmed",
+    );
   });
 
-  it.each([null, 0, -1, 1.5, Number.POSITIVE_INFINITY])(
+  it.each([null, 0, -1, 1.5, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
     "does not complete exact claims for invalid quantity %s",
     (quantity) => {
       const exactSelected = applyClaimsVolumeChoice(
@@ -311,6 +323,50 @@ describe("scope decisions", () => {
       expect(claimsArtifactCopy(next).headline).toBe("Value inputs not captured yet");
     },
   );
+
+  it("preserves a saved exact quantity when exact is selected again", () => {
+    const exact = applyExactClaimsVolume(
+      applyClaimsVolumeChoice(initialSessionGraph, "exact"),
+      275,
+    );
+
+    expect(applyClaimsVolumeChoice(exact, "exact")).toEqual(exact);
+  });
+
+  it("round-trips exact claims to the about-400 choice", () => {
+    const exact = applyExactClaimsVolume(
+      applyClaimsVolumeChoice(initialSessionGraph, "exact"),
+      275,
+    );
+    const about = applyClaimsVolumeChoice(exact, "about-400");
+    const claims = about.valueInputs.find((input) => input.id === "claims");
+
+    expect(claims).toMatchObject({
+      quantity: 400,
+      confirmedBy: "Michelle Dorsey",
+      respondentConfirmed: true,
+    });
+    expect(claimsPayoffCopy(about)).toContain("400 × 2 × $38.75");
+    expect(about.outcome.partiallyEstimated).toBe(false);
+  });
+
+  it("round-trips exact claims to the range choice", () => {
+    const exact = applyExactClaimsVolume(
+      applyClaimsVolumeChoice(initialSessionGraph, "exact"),
+      275,
+    );
+    const range = applyClaimsVolumeChoice(exact, "range-250-500");
+    const claims = range.valueInputs.find((input) => input.id === "claims");
+
+    expect(claims).toMatchObject({
+      quantity: 375,
+      confirmedBy: "Michelle Dorsey",
+      respondentConfirmed: true,
+    });
+    expect(claimsPayoffCopy(range)).toContain("$19,000–$39,000/day");
+    expect(claimsArtifactCopy(range).status).toBe("Range estimate · spans the library range");
+    expect(range.outcome.partiallyEstimated).toBe(true);
+  });
 
   it("lists each confirmer once on the artifact", () => {
     expect(inputsConfirmedByCopy(initialSessionGraph)).toBe(
