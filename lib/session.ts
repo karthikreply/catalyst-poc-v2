@@ -278,6 +278,19 @@ export function applyDeliveryMode(graph: SessionGraph, delivery: Delivery): Sess
   });
 }
 
+export function updateValueConfirmer(
+  graph: SessionGraph,
+  inputId: string,
+  confirmer: string | null,
+): SessionGraph {
+  return {
+    ...graph,
+    valueInputs: graph.valueInputs.map((input) =>
+      input.id === inputId ? { ...input, confirmedBy: confirmer } : input,
+    ),
+  };
+}
+
 export function applyMechanic(graph: SessionGraph, mechanic: Mechanic): SessionGraph {
   return bindAnnualValue({
     ...graph,

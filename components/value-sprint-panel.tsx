@@ -5,7 +5,7 @@ import { hasCompleteValueInputs } from "@/lib/session";
 import { calculateDailyValue, formatCurrency } from "@/lib/value";
 
 export function ValueSprintPanel() {
-  const { graph, updateValue, canEditSession, viewer } = useSession();
+  const { graph, updateValue, updateValueConfirmer, canEditSession, viewer } = useSession();
   const claims = graph.valueInputs.find((input) => input.id === "claims")!;
   const delay = graph.valueInputs.find((input) => input.id === "delay")!;
   const handling = graph.valueInputs.find((input) => input.id === "handling")!;
@@ -14,6 +14,7 @@ export function ValueSprintPanel() {
     ? calculateDailyValue(claims.quantity!, delay.quantity!, handling.quantity!)
     : null;
   const selfService = graph.session.delivery === "self-service";
+  const InputRow = selfService ? "div" : "label";
 
   return (
     <div className="mt-7 grid gap-px overflow-hidden rounded-sm border border-black/10 bg-black/10 lg:grid-cols-[1.2fr_.8fr]">
@@ -39,12 +40,32 @@ export function ValueSprintPanel() {
         <p className="mb-3 text-sm font-medium">Confirmed inputs</p>
         <div className="space-y-3">
           {graph.valueInputs.map((input) => (
-            <label key={input.id} className="grid grid-cols-[1fr_100px] items-center gap-4 text-sm">
+            <InputRow key={input.id} className="grid grid-cols-[1fr_100px] items-center gap-4 text-sm">
               <span>
                 {input.label}
                 <span className="block text-xs text-black/45">
-                  {selfService ? "Respondent-confirmed · not facilitator-verified" : input.confirmedBy ? `Confirmed by ${input.confirmedBy}` : "Unconfirmed"}
+                  {selfService
+                    ? input.confirmedBy
+                      ? `Confirmed by ${input.confirmedBy} · not facilitator-verified`
+                      : "Choose who confirmed · not facilitator-verified"
+                    : input.confirmedBy
+                      ? `Confirmed by ${input.confirmedBy}`
+                      : "Unconfirmed"}
                 </span>
+                {selfService && (
+                  <select
+                    aria-label={`Confirmer for ${input.label}`}
+                    value={input.confirmedBy ?? ""}
+                    disabled={!canEditSession}
+                    onChange={(event) => updateValueConfirmer(input.id, event.target.value || null)}
+                    className="mt-2 w-full rounded-sm border border-black/15 bg-white px-2 py-2 text-sm outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-accent)_15%,transparent)] disabled:bg-black/[.03] disabled:text-black/45"
+                  >
+                    <option value="">Choose attendee</option>
+                    {graph.attendees.map((attendee) => (
+                      <option key={attendee.id} value={attendee.name}>{attendee.name}</option>
+                    ))}
+                  </select>
+                )}
               </span>
               {" "}
               <span className="flex items-center rounded-sm border border-black/15 bg-white px-2 focus-within:border-[var(--brand-accent)] focus-within:ring-2 focus-within:ring-[color-mix(in_srgb,var(--brand-accent)_15%,transparent)]">
@@ -59,7 +80,7 @@ export function ValueSprintPanel() {
                   className="min-w-0 flex-1 bg-transparent px-1 py-2 text-right font-semibold tabular-nums outline-none"
                 />
               </span>
-            </label>
+            </InputRow>
           ))}
         </div>
         {viewer.actor === "cpm" && (

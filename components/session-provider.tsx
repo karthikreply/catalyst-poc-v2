@@ -28,6 +28,7 @@ import {
   isSessionReadOnly,
   restoreSeededGraph,
   savePartnerNote as savePartnerNoteInGraph,
+  updateValueConfirmer as updateValueConfirmerInGraph,
   viewerForActor,
   type ClaimsVolumeChoice,
   type FundingRoute,
@@ -44,6 +45,7 @@ type SessionContextValue = {
   setDelivery: (delivery: Delivery) => void;
   setMechanic: (mechanic: Mechanic) => void;
   updateValue: (id: string, quantity: number | null) => void;
+  updateValueConfirmer: (inputId: string, confirmer: string | null) => void;
   updateCostInput: (componentId: string, inputLabel: string, quantity: number | null) => void;
   freezeLedgerNow: () => void;
   addCapture: (capture: Omit<Capture, "id" | "sessionId" | "capturedAt">) => void;
@@ -142,6 +144,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (current.session.mechanic !== "value-sprint") return next;
       return bindAnnualValue(next);
     });
+  }
+
+  function updateValueConfirmer(inputId: string, confirmer: string | null) {
+    if (!canEditSession) return;
+    setGraph((current) => updateValueConfirmerInGraph(current, inputId, confirmer));
   }
 
   function updateCostInput(componentId: string, inputLabel: string, quantity: number | null) {
@@ -267,6 +274,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setDelivery,
     setMechanic,
     updateValue,
+    updateValueConfirmer,
     updateCostInput,
     freezeLedgerNow,
     addCapture,

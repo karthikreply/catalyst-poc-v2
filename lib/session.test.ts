@@ -32,9 +32,24 @@ import {
   restoreSeededGraph,
   savePartnerNote,
   shouldResetGraph,
+  updateValueConfirmer,
   viewerForActor,
 } from "./session";
 import { calculateAnnualValue } from "./value";
+
+describe("self-service input confirmation", () => {
+  it("updates one confirmer without changing values, captures, or other confirmers", () => {
+    const selfService = applyDeliveryMode(initialSessionGraph, "self-service");
+    const updated = updateValueConfirmer(selfService, "claims", "Dana Reyes");
+
+    expect(updated.valueInputs.find((item) => item.id === "claims")?.confirmedBy).toBe("Dana Reyes");
+    expect(updated.valueInputs.find((item) => item.id === "delay")?.confirmedBy).toBeNull();
+    expect(updated.valueInputs.map((item) => item.quantity)).toEqual(
+      selfService.valueInputs.map((item) => item.quantity),
+    );
+    expect(updated.captures).toEqual(selfService.captures);
+  });
+});
 
 describe("applyDeliveryMode", () => {
   it("keeps edited values and captures when switching delivery", () => {
