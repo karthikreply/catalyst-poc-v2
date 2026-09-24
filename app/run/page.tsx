@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useSession } from "@/components/session-provider";
 import { ValueSprintPanel } from "@/components/value-sprint-panel";
 import { nextQuestionSuggestion } from "@/lib/facilitation";
-import { agendaForSession, isEditableCapture } from "@/lib/session";
+import { agendaForSession } from "@/lib/session";
 import type { Capture } from "@/lib/seed";
 import { cn } from "@/lib/utils";
 
@@ -134,7 +134,7 @@ export default function RunPage() {
                     key={capture.id}
                     capture={capture}
                     people={capturePeople}
-                    canEdit={canEditSession && isEditableCapture(capture)}
+                    canEdit={canEditSession}
                     showAttribution={!selfService}
                     onSave={updateCapture}
                   />

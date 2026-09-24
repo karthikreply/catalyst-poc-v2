@@ -5,7 +5,6 @@ import {
   patterns,
   prework,
   type Actor,
-  type Capture,
   type ColdAttendee,
   type ColdCompany,
   type Delivery,
@@ -218,12 +217,6 @@ export function savePartnerNote(graph: SessionGraph, note: PartnerNote): Session
   };
 }
 
-const seededCaptureIds = new Set(initialSessionGraph.captures.map((capture) => capture.id));
-
-export function isEditableCapture(capture: Capture) {
-  return !seededCaptureIds.has(capture.id);
-}
-
 export function updateCapture(
   graph: SessionGraph,
   captureId: string,
@@ -234,7 +227,7 @@ export function updateCapture(
   return {
     ...graph,
     captures: graph.captures.map((capture) =>
-      capture.id === captureId && isEditableCapture(capture)
+      capture.id === captureId
         ? { ...capture, attributedTo: update.attributedTo, text }
         : capture,
     ),

@@ -56,18 +56,18 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("what we heard", () => {
-  it("shows every capture and offers edit only on session captures", () => {
+  it("shows every capture with an edit action", () => {
     render(<RunPage />);
 
     expect(screen.getByText("Intake sits six days, mostly manual PDF reading.")).toBeInTheDocument();
     expect(screen.getByText(sessionCapture.text)).toBeInTheDocument();
     expect(screen.getByText("6 captures")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(6);
   });
 
-  it("edits the text and speaker of a session capture", () => {
+  it("edits the text and speaker of a capture", () => {
     render(<RunPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[5]);
 
     fireEvent.change(screen.getByLabelText("Edit capture text"), {
       target: { value: "Board asked for a decision by October." },
@@ -82,9 +82,22 @@ describe("what we heard", () => {
     expect(screen.getByText("6 captures")).toBeInTheDocument();
   });
 
+  it("edits a seeded capture", () => {
+    render(<RunPage />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+
+    fireEvent.change(screen.getByLabelText("Edit capture text"), {
+      target: { value: "Intake sits five days once the backlog clears." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByText("Intake sits five days once the backlog clears.")).toBeInTheDocument();
+    expect(screen.queryByText("Intake sits six days, mostly manual PDF reading.")).not.toBeInTheDocument();
+  });
+
   it("discards an edit on cancel", () => {
     render(<RunPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[5]);
     fireEvent.change(screen.getByLabelText("Edit capture text"), { target: { value: "Rewritten." } });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 

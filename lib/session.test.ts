@@ -26,7 +26,6 @@ import {
   graphForActor,
   hydrateSessionGraph,
   inputsConfirmedByCopy,
-  isEditableCapture,
   missingColdRoles,
   isQualified,
   isSessionReadOnly,
@@ -708,12 +707,7 @@ describe("session captures", () => {
     captures: [...initialSessionGraph.captures, sessionCapture],
   };
 
-  it("treats seeded testimony as fixed and session captures as editable", () => {
-    expect(initialSessionGraph.captures.every((capture) => !isEditableCapture(capture))).toBe(true);
-    expect(isEditableCapture(sessionCapture)).toBe(true);
-  });
-
-  it("edits the text and attribution of a session capture only", () => {
+  it("edits the text and attribution of one capture only", () => {
     const updated = updateCapture(withSessionCapture, sessionCapture.id, {
       attributedTo: "Michelle Dorsey",
       text: "  Board asked for a decision by October.  ",
@@ -728,11 +722,22 @@ describe("session captures", () => {
     expect(updated.captures.slice(0, -1)).toEqual(initialSessionGraph.captures);
   });
 
-  it("refuses to rewrite seeded testimony or blank a capture", () => {
+  it("edits a seeded capture in place", () => {
     const seeded = initialSessionGraph.captures[0];
+    const updated = updateCapture(withSessionCapture, seeded.id, {
+      attributedTo: "Robert Osei",
+      text: "Intake sits five days once the backlog clears.",
+    });
 
-    expect(updateCapture(withSessionCapture, seeded.id, { attributedTo: "Ravi Menon", text: "Rewritten." }).captures)
-      .toEqual(withSessionCapture.captures);
+    expect(updated.captures[0]).toEqual({
+      ...seeded,
+      attributedTo: "Robert Osei",
+      text: "Intake sits five days once the backlog clears.",
+    });
+    expect(updated.captures.slice(1)).toEqual(withSessionCapture.captures.slice(1));
+  });
+
+  it("refuses to blank a capture", () => {
     expect(updateCapture(withSessionCapture, sessionCapture.id, { attributedTo: "Dana Reyes", text: "   " }).captures)
       .toEqual(withSessionCapture.captures);
   });
