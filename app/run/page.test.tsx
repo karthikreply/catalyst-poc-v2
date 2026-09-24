@@ -160,3 +160,36 @@ describe("what the session agreed", () => {
     expect(screen.getByLabelText("Next step")).toHaveValue("6-week pilot on 500 anonymised claims");
   });
 });
+
+describe("board-slide close", () => {
+  it("shows the facilitator sub-prompt on the active closing step", () => {
+    useSessionMock.mockReturnValue({
+      graph: {
+        ...initialSessionGraph,
+        session: { ...initialSessionGraph.session, closeStyle: "board-slide" },
+        agenda: initialSessionGraph.agenda.map((step) => ({
+          ...step,
+          state: step.id === "owner-and-ask" ? "active" : "done",
+        })),
+      },
+      brand: { partnerName: "CDW" },
+      viewer: { actor: "partner", name: "Ravi Menon", org: "CDW" },
+      canEditSession: true,
+      addCapture: vi.fn(),
+      updateCapture: vi.fn(),
+      saveSessionOutcome: vi.fn(),
+      setActiveStep: vi.fn(),
+      updateValue: vi.fn(),
+      updateValueConfirmer: vi.fn(),
+      updateCostInput: vi.fn(),
+      freezeLedgerNow: vi.fn(),
+    });
+
+    render(<RunPage />);
+
+    expect(screen.getByRole("heading", {
+      name: "It's March. The pilot worked. Dana, what do you tell your board?",
+    })).toBeInTheDocument();
+    expect(screen.getByText("Capture the answer verbatim. Their words, not a summary.")).toBeInTheDocument();
+  });
+});

@@ -25,14 +25,15 @@ describe("read-only Plan controls", () => {
       brand: brands.cdw,
       setDelivery: vi.fn(),
       setMechanic: vi.fn(),
+      setCloseStyle: vi.fn(),
       canEditSession: false,
     });
 
     const markup = renderToStaticMarkup(<PlanPage />);
 
-    expect(markup.match(/disabled=""/g)).toHaveLength(4);
-    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(2);
-    expect(markup.match(/aria-pressed="false"/g)).toHaveLength(2);
+    expect(markup.match(/disabled=""/g)).toHaveLength(6);
+    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(3);
+    expect(markup.match(/aria-pressed="false"/g)).toHaveLength(3);
   });
 
   it("renders at most one partner context", () => {
@@ -57,6 +58,7 @@ describe("read-only Plan controls", () => {
       brand: brands.cdw,
       setDelivery: vi.fn(),
       setMechanic: vi.fn(),
+      setCloseStyle: vi.fn(),
       canEditSession: true,
     });
 
@@ -64,5 +66,28 @@ describe("read-only Plan controls", () => {
 
     expect(markup).toContain("Newest partner context.");
     expect(markup).not.toContain("Older partner context.");
+  });
+
+  it("shows the board-slide close selector and agenda variant", () => {
+    useSessionMock.mockReturnValue({
+      graph: {
+        ...initialSessionGraph,
+        session: { ...initialSessionGraph.session, closeStyle: "board-slide" },
+      },
+      brand: brands.cdw,
+      setDelivery: vi.fn(),
+      setMechanic: vi.fn(),
+      setCloseStyle: vi.fn(),
+      canEditSession: true,
+    });
+
+    const markup = renderToStaticMarkup(<PlanPage />);
+
+    expect(markup).toContain("How it closes");
+    expect(markup).toContain("Owner and ask");
+    expect(markup).toContain("Board-slide close");
+    expect(markup).toContain("Time Traveler: imagine the pilot succeeded, then capture the sponsor");
+    expect(markup).toContain("The board slide");
+    expect(markup).toContain("Capture the answer verbatim. Their words, not a summary.");
   });
 });

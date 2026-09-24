@@ -19,6 +19,7 @@ import {
   artifactPilotScopeCopy,
   claimsArtifactCopy,
   claimsVolumeProvenanceCopy,
+  customerSponsor,
   fundingAskCopy,
   hasCompleteCostComponents,
 } from "@/lib/session";
@@ -51,8 +52,11 @@ export default function ArtifactPage() {
   const people = withBrandPeople(brand);
   const claimsCopy = claimsArtifactCopy(graph);
   const problemQuotes = (graph.session.scopeMode === "cold"
-    ? graph.captures
-    : graph.captures.filter((capture) => ["Michelle Dorsey", "Dana Reyes", "Alex Chen"].includes(capture.attributedTo))).slice(0, 3);
+    ? graph.captures.filter((capture) => capture.stepId !== "owner-and-ask")
+    : graph.captures.filter((capture) =>
+      capture.stepId !== "owner-and-ask"
+      && ["Michelle Dorsey", "Dana Reyes", "Alex Chen"].includes(capture.attributedTo),
+    )).slice(0, 3);
   const compliancePerson = graph.attendees.find((attendee) => /compliance|risk|audit/i.test(attendee.role));
   const compliance = graph.captures.find((capture) =>
     graph.session.scopeMode === "cold"
@@ -65,6 +69,10 @@ export default function ArtifactPage() {
   const ghostAnnual = ledgerAnnualTotal(graph.costComponents);
   const partial = graph.outcome.partiallyEstimated || graph.costComponents.some((row) => row.confirmedBy === null);
   const qualified = graph.session.qualified;
+  const boardSlideCaptures = graph.session.closeStyle === "board-slide"
+    ? graph.captures.filter((capture) => capture.stepId === "owner-and-ask")
+    : [];
+  const sponsor = customerSponsor(graph);
 
   const actions = artifactActions(viewer.actor, qualified, graph.session.delivery);
 
@@ -258,6 +266,27 @@ export default function ArtifactPage() {
               ))}
             </dl>
           </section>
+
+          {boardSlideCaptures.length > 0 && (
+            <section>
+              <h3 className="text-lg font-semibold">
+                In six months, {sponsor?.name ?? "the customer sponsor"} expects to say:
+              </h3>
+              <div className="mt-4 space-y-4">
+                {boardSlideCaptures.map((capture) => {
+                  const speaker = graph.attendees.find((attendee) => attendee.name === capture.attributedTo);
+                  return (
+                    <blockquote key={capture.id} className="border-l-2 pl-4 text-[15px] leading-7" style={{ borderColor: brand.accent }}>
+                      “{capture.text}”
+                      <cite className="mt-1 block not-italic text-black/48">
+                        — {capture.attributedTo}{speaker?.role ? `, ${speaker.role}` : ""}
+                      </cite>
+                    </blockquote>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <section className="border-t border-black/10 pt-8">
             <h3 className="text-lg font-semibold">The ask</h3>

@@ -88,6 +88,9 @@ export default function RunPage() {
               <div className="min-w-0 flex-1">
                 <p className="mb-2 text-sm font-medium text-black/45">{activeStep.title} · {activeStep.durationMinutes} min</p>
                 <h2 className="max-w-4xl text-2xl font-semibold leading-tight tracking-tight md:text-3xl">{activeStep.prompt}</h2>
+                {activeStep.subPrompt && (
+                  <p className="mt-2 text-sm text-black/55">{activeStep.subPrompt}</p>
+                )}
               </div>
               <Link href="/artifact" className={buttonVariants({ className: "bg-[var(--brand-accent)] text-white hover:bg-[var(--brand-accent-dark)]" })}>
                 Generate business case <ArrowRight />

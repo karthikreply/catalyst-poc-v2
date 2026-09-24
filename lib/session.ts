@@ -5,6 +5,7 @@ import {
   patterns,
   prework,
   type Actor,
+  type CloseStyle,
   type ColdAttendee,
   type ColdCompany,
   type Delivery,
@@ -342,6 +343,19 @@ export function applyMechanic(graph: SessionGraph, mechanic: Mechanic): SessionG
   });
 }
 
+export function applyCloseStyle(graph: SessionGraph, closeStyle: CloseStyle): SessionGraph {
+  return {
+    ...graph,
+    session: { ...graph.session, closeStyle },
+  };
+}
+
+export function customerSponsor(graph: SessionGraph) {
+  return graph.attendees.find((attendee) =>
+    attendee.attendance === "attending" && /sponsor/i.test(attendee.reason),
+  ) ?? graph.attendees.find((attendee) => attendee.attendance === "attending");
+}
+
 export function agendaForSession(graph: SessionGraph) {
   return graph.agenda.map((step) => {
     if (step.id === "volume-and-cost" && graph.session.mechanic === "ghost-ledger") {
@@ -349,6 +363,14 @@ export function agendaForSession(graph: SessionGraph) {
         ...step,
         title: "Build the ledger",
         prompt: "What do tool spend, overtime, rework rate, and review hours cost today?",
+      };
+    }
+    if (step.id === "owner-and-ask" && graph.session.closeStyle === "board-slide") {
+      return {
+        ...step,
+        title: "The board slide",
+        prompt: "It's March. The pilot worked. Dana, what do you tell your board?",
+        subPrompt: "Capture the answer verbatim. Their words, not a summary.",
       };
     }
     if (step.id === "owner-and-ask" && graph.session.fundingRoute === "brief-dana") {

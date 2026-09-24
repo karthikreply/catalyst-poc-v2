@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { brands } from "@/lib/brands";
 import { initialSessionGraph } from "@/lib/seed";
-import { applyClaimsVolumeChoice, applyExactClaimsVolume } from "@/lib/session";
+import { applyClaimsVolumeChoice, applyCloseStyle, applyExactClaimsVolume } from "@/lib/session";
 
 const { useSessionMock } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
@@ -36,5 +36,66 @@ describe("exact claims provenance", () => {
       "Volume entered by partner in Scope · not respondent-confirmed",
     );
     expect(markup).not.toContain("Volume is an unconfirmed estimate from scope.");
+  });
+});
+
+describe("board-slide close", () => {
+  const boardCapture = {
+    id: "cap-board-dana",
+    sessionId: initialSessionGraph.session.id,
+    stepId: "owner-and-ask",
+    attributedTo: "Dana Reyes",
+    text: "We cut intake from six days to two.",
+    capturedAt: "2026-09-21T12:15:00-05:00",
+  };
+
+  function renderArtifact(graph: typeof initialSessionGraph) {
+    useSessionMock.mockReturnValue({
+      graph,
+      brand: brands.cdw,
+      viewer: { actor: "partner", name: "Ravi Menon", org: "CDW" },
+    });
+    return renderToStaticMarkup(<ArtifactPage />);
+  }
+
+  it("renders verbatim board-slide captures after the proposed pilot", () => {
+    const graph = applyCloseStyle({
+      ...initialSessionGraph,
+      captures: [
+        ...initialSessionGraph.captures,
+        boardCapture,
+        {
+          ...boardCapture,
+          id: "cap-board-michelle",
+          attributedTo: "Michelle Dorsey",
+          text: "My team stopped working weekends.",
+        },
+      ],
+    }, "board-slide");
+
+    const markup = renderArtifact(graph);
+
+    expect(markup).toContain("In six months, Dana Reyes expects to say:");
+    expect(markup).toContain("“We cut intake from six days to two.”");
+    expect(markup).toContain("Dana Reyes, VP Claims Operations");
+    expect(markup).toContain("“My team stopped working weekends.”");
+    expect(markup).toContain("Michelle Dorsey, Claims Supervisor");
+    expect(markup.indexOf("The proposed pilot")).toBeLessThan(markup.indexOf("In six months"));
+    expect(markup.indexOf("In six months")).toBeLessThan(markup.indexOf("The ask"));
+  });
+
+  it("omits the section for owner-and-ask", () => {
+    const graph = {
+      ...initialSessionGraph,
+      captures: [...initialSessionGraph.captures, boardCapture],
+    };
+
+    expect(renderArtifact(graph)).not.toContain("In six months");
+  });
+
+  it("omits the section when the closing step has no captures", () => {
+    const graph = applyCloseStyle(initialSessionGraph, "board-slide");
+
+    expect(renderArtifact(graph)).not.toContain("In six months");
   });
 });

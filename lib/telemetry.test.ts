@@ -79,6 +79,7 @@ describe("telemetryBenchmarks", () => {
     expect(new Set(rows.map((row) => row.delivery))).toEqual(new Set(["facilitated", "self-service"]));
     expect(new Set(rows.map((row) => row.outcome)).size).toBeGreaterThan(2);
     expect(new Set(rows.map((row) => row.quarter)).size).toBeGreaterThan(2);
+    expect(new Set(rows.map((row) => row.closeStyle))).toEqual(new Set(["owner-and-ask", "board-slide"]));
   });
 
   it("computes mechanic conversion from the visible rows", () => {
@@ -105,5 +106,6 @@ describe("telemetryBenchmarks", () => {
     expect(recent.filter((row) => row.delivery === "facilitated")).toHaveLength(4);
     expect(recent.filter((row) => row.delivery === "self-service")).toHaveLength(4);
     expect(recent.filter((row) => row.delivery === "self-service" && row.qualified).length).toBeGreaterThanOrEqual(3);
+    expect(recent.some((row) => row.closeStyle === "board-slide")).toBe(true);
   });
 });

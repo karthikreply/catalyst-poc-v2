@@ -41,4 +41,15 @@ describe("nextQuestionSuggestion", () => {
 
     expect(second).not.toBe(first);
   });
+
+  it("suggests the board-slide number question for the closing step", () => {
+    const graph = {
+      ...initialSessionGraph,
+      session: { ...initialSessionGraph.session, closeStyle: "board-slide" as const },
+    };
+
+    expect(nextQuestionSuggestion(graph, "owner-and-ask", null)).toBe(
+      "If your board asked what changed, what's the one number you'd lead with?",
+    );
+  });
 });

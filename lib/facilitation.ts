@@ -70,6 +70,9 @@ export function nextQuestionSuggestion(
   stepId: string,
   previousSuggestion: string | null,
 ) {
+  if (stepId === "owner-and-ask" && graph.session.closeStyle === "board-slide") {
+    return "If your board asked what changed, what's the one number you'd lead with?";
+  }
   const latestCapture = [...graph.captures].reverse().find((capture) => capture.stepId === stepId);
   const contextual = contextualQuestion(stepId, latestCapture);
   const candidates = [

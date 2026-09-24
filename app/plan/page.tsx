@@ -8,12 +8,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { UnavailableControl } from "@/components/unavailable-control";
 import { useSession } from "@/components/session-provider";
 import { withBrandPeople } from "@/lib/brands";
-import { patterns, type Delivery, type Mechanic } from "@/lib/seed";
+import { patterns, type CloseStyle, type Delivery, type Mechanic } from "@/lib/seed";
 import { agendaForSession, missingColdRoles, pdmPartnerInvitationCopy, preworkForMechanic } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export default function PlanPage() {
-  const { graph, brand, setDelivery, setMechanic, canEditSession } = useSession();
+  const { graph, brand, setDelivery, setMechanic, setCloseStyle, canEditSession } = useSession();
   const people = withBrandPeople(brand);
   const [copied, setCopied] = useState<"facilitated" | "self-service" | "pdm" | null>(null);
   const pattern = patterns.find((item) => item.id === graph.session.patternId)!;
@@ -94,7 +94,7 @@ ${people.signoff}`;
       <div className="mt-8 space-y-5">
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">How this session runs</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div>
               <p className="text-xs font-medium text-black/45">Who runs it</p>
               <div className="mt-2 grid gap-2">
@@ -137,6 +137,27 @@ ${people.signoff}`;
                 ))}
               </div>
             </div>
+            <div>
+              <p className="text-xs font-medium text-black/45">How it closes</p>
+              <div className="mt-2 grid gap-2">
+                {([
+                  ["owner-and-ask", "Owner and ask", "Name the owner and make the funding ask explicit."],
+                  ["board-slide", "Board-slide close", "Time Traveler: imagine the pilot succeeded, then capture the sponsor's words verbatim."],
+                ] as [CloseStyle, string, string][]).map(([value, label, hint]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={graph.session.closeStyle === value}
+                    disabled={!canEditSession}
+                    onClick={() => setCloseStyle(value)}
+                    className={cn("rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60", graph.session.closeStyle === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
+                  >
+                    <span className="font-semibold">{label}</span>
+                    <span className="mt-1 block text-xs text-black/50">{hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <p className="mt-4 text-sm text-black/55">Practice sponsor: {people.sponsorLine}</p>
         </section>
@@ -149,7 +170,10 @@ ${people.signoff}`;
                 <span className="grid size-6 place-items-center rounded-full text-xs font-semibold text-white" style={{ background: brand.accent }}>{step.order}</span>
                 <span className="font-semibold">{step.title}</span>
                 <span className="flex items-center gap-1 text-sm text-black/48"><Clock className="size-3.5" />{step.durationMinutes} min</span>
-                <span className="text-sm leading-6 text-black/62">“{step.prompt}”</span>
+                <span className="text-sm leading-6 text-black/62">
+                  “{step.prompt}”
+                  {step.subPrompt && <span className="mt-1 block text-xs text-black/48">{step.subPrompt}</span>}
+                </span>
               </div>
             ))}
           </div>

@@ -1,6 +1,7 @@
 export type Actor = "pdm" | "partner" | "cpm";
 export type Delivery = "facilitated" | "self-service";
 export type Mechanic = "value-sprint" | "ghost-ledger";
+export type CloseStyle = "owner-and-ask" | "board-slide";
 export type FieldSource = "partner-portal" | "crm" | "typed" | "inferred";
 export type ScopeMode = "seeded" | "cold";
 
@@ -26,6 +27,7 @@ export type Session = {
   patternId: string;
   delivery: Delivery;
   mechanic: Mechanic;
+  closeStyle: CloseStyle;
   scheduledFor: string;
   status: "scoped" | "planned" | "running" | "complete";
   qualified: boolean;
@@ -42,6 +44,7 @@ export type AgendaStep = {
   order: number;
   title: string;
   prompt: string;
+  subPrompt?: string;
   durationMinutes: number;
   state: "done" | "active" | "upcoming";
 };
@@ -170,6 +173,7 @@ export const initialSessionGraph: SessionGraph = {
     patternId: "document-intake",
     delivery: "facilitated",
     mechanic: "value-sprint",
+    closeStyle: "owner-and-ask",
     scheduledFor: "2026-09-21T09:00:00-05:00",
     status: "running",
     qualified: false,

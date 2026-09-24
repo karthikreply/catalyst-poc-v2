@@ -11,6 +11,7 @@ import {
   applyExactClaimsVolume,
   applyFundingRoute,
   applyMechanic,
+  applyCloseStyle,
   artifactActions,
   artifactHeadline,
   artifactLimitsCopy,
@@ -143,6 +144,31 @@ describe("applyMechanic", () => {
     expect(restored.session.mechanic).toBe("value-sprint");
     expect(restored.session.ledgerFrozen).toBe(false);
     expect(restored.outcome.annualValue).toBe(calculateAnnualValue(400, 2, 38.75));
+  });
+});
+
+describe("close style", () => {
+  it("uses the board-slide variant without changing the required outcome", () => {
+    const boardSlide = applyCloseStyle(initialSessionGraph, "board-slide");
+    const step = agendaForSession(boardSlide).find((item) => item.id === "owner-and-ask");
+
+    expect(boardSlide.session.mechanic).toBe(initialSessionGraph.session.mechanic);
+    expect(boardSlide.outcome.owner).toBe(initialSessionGraph.outcome.owner);
+    expect(boardSlide.outcome.nextStep).toBe(initialSessionGraph.outcome.nextStep);
+    expect(step).toMatchObject({
+      title: "The board slide",
+      durationMinutes: 30,
+      prompt: "It's March. The pilot worked. Dana, what do you tell your board?",
+      subPrompt: "Capture the answer verbatim. Their words, not a summary.",
+    });
+  });
+
+  it("keeps owner and next step populated under both close styles", () => {
+    for (const closeStyle of ["owner-and-ask", "board-slide"] as const) {
+      const graph = applyCloseStyle(initialSessionGraph, closeStyle);
+      expect(graph.outcome.owner).toBeTruthy();
+      expect(graph.outcome.nextStep).toBeTruthy();
+    }
   });
 });
 

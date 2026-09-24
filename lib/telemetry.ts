@@ -1,4 +1,4 @@
-import type { Actor } from "./seed";
+import type { Actor, CloseStyle } from "./seed";
 
 export type TelemetryOutcome = "Scoped" | "Run" | "Pilot proposed" | "Pilot funded";
 export type TelemetryPartner = "CDW" | "SoftwareOne" | "Insight" | "SHI";
@@ -17,6 +17,7 @@ export type TelemetrySession = {
   customer?: string;
   delivery: TelemetryDelivery;
   mechanic: TelemetryMechanic;
+  closeStyle: CloseStyle;
   qualified: boolean;
   converted: boolean;
   fundingClaimSubmitted: boolean;
@@ -79,6 +80,7 @@ function row(
     fundedValue: converted ? 180_000 + (index % 9) * 55_000 : 0,
     delivery,
     mechanic,
+    closeStyle: index % 31 === 0 ? "board-slide" : "owner-and-ask",
     qualified,
     converted,
     fundingClaimSubmitted: converted,
@@ -151,6 +153,7 @@ export function recentTelemetryRows(rows: TelemetrySession[], limit = 8) {
   const facilitatedTarget = Math.floor(limit / 2);
   const selfServiceTarget = limit - facilitatedTarget;
 
+  addFirst((row) => row.delivery === "facilitated" && row.closeStyle === "board-slide");
   addFirst((row) => row.delivery === "facilitated" && row.mechanic === "ghost-ledger");
   for (const pattern of patterns) {
     if (selected.filter((row) => row.delivery === "facilitated").length >= facilitatedTarget) break;

@@ -8,6 +8,7 @@ import {
   initialSessionGraph,
   type Actor,
   type Capture,
+  type CloseStyle,
   type ColdAttendee,
   type ColdCompany,
   type Delivery,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/seed";
 import {
   applyClaimsVolumeChoice,
+  applyCloseStyle,
   applyColdScope,
   applyDeliveryMode,
   applyExactClaimsVolume,
@@ -47,6 +49,7 @@ type SessionContextValue = {
   setActor: (actor: Actor) => void;
   setDelivery: (delivery: Delivery) => void;
   setMechanic: (mechanic: Mechanic) => void;
+  setCloseStyle: (closeStyle: CloseStyle) => void;
   updateValue: (id: string, quantity: number | null) => void;
   updateValueConfirmer: (inputId: string, confirmer: string | null) => void;
   updateCostInput: (componentId: string, inputLabel: string, quantity: number | null) => void;
@@ -140,6 +143,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   function setMechanic(mechanic: Mechanic) {
     if (!canEditSession) return;
     setGraph((current) => applyMechanic(current, mechanic));
+  }
+
+  function setCloseStyle(closeStyle: CloseStyle) {
+    if (!canEditSession) return;
+    setGraph((current) => applyCloseStyle(current, closeStyle));
   }
 
   function updateValue(id: string, quantity: number | null) {
@@ -298,6 +306,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setActor,
     setDelivery,
     setMechanic,
+    setCloseStyle,
     updateValue,
     updateValueConfirmer,
     updateCostInput,
