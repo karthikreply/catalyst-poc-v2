@@ -33,6 +33,7 @@ import {
   preworkForMechanic,
   restoreSeededGraph,
   savePartnerNote,
+  saveSessionOutcome,
   shouldResetGraph,
   updateCapture,
   updateValueConfirmer,
@@ -740,5 +741,37 @@ describe("session captures", () => {
   it("refuses to blank a capture", () => {
     expect(updateCapture(withSessionCapture, sessionCapture.id, { attributedTo: "Dana Reyes", text: "   " }).captures)
       .toEqual(withSessionCapture.captures);
+  });
+});
+
+describe("session outcome", () => {
+  it("captures the use case, constraint, and next step a cold session agreed", () => {
+    const cold = applyColdScope(initialSessionGraph, coldScopeDefaults.company, coldScopeDefaults.attendees);
+    expect(cold.outcome.useCase).toBe("");
+
+    const agreed = saveSessionOutcome(cold, {
+      useCase: "  AI-assisted claims intake extraction  ",
+      constraint: "Human review on low-confidence extractions",
+      nextStep: "6-week pilot on 500 anonymised claims",
+    });
+
+    expect(agreed.outcome.useCase).toBe("AI-assisted claims intake extraction");
+    expect(agreed.outcome.constraint).toBe("Human review on low-confidence extractions");
+    expect(agreed.outcome.nextStep).toBe("6-week pilot on 500 anonymised claims");
+    expect(artifactHeadline(agreed.outcome.useCase)).not.toBe("Business case awaiting session evidence");
+    expect(artifactPilotScopeCopy(agreed, brands.cdw)).not.toBe("Not yet defined");
+  });
+
+  it("edits the seeded outcome without touching captures or value inputs", () => {
+    const edited = saveSessionOutcome(initialSessionGraph, {
+      useCase: "AI-assisted first-notice-of-loss triage",
+      constraint: initialSessionGraph.outcome.constraint,
+      nextStep: initialSessionGraph.outcome.nextStep,
+    });
+
+    expect(edited.outcome.useCase).toBe("AI-assisted first-notice-of-loss triage");
+    expect(edited.outcome.owner).toBe(initialSessionGraph.outcome.owner);
+    expect(edited.captures).toEqual(initialSessionGraph.captures);
+    expect(edited.valueInputs).toEqual(initialSessionGraph.valueInputs);
   });
 });

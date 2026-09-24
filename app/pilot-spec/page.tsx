@@ -37,7 +37,9 @@ export default function PilotSpecPage() {
   const compliancePerson = graph.attendees.find((attendee) => /compliance|risk|audit/i.test(attendee.role));
   const compliance = graph.captures.find((capture) => capture.attributedTo === compliancePerson?.name);
   const owner = graph.outcome.owner ?? "Owner not yet confirmed";
-  const constraintAttribution = compliancePerson ? `${compliancePerson.name}, ${compliancePerson.role}` : "Confirmer needed";
+  const constraintAttribution = compliance && compliancePerson
+    ? `${compliancePerson.name}, ${compliancePerson.role}`
+    : "agreed in session · no named confirmer";
   const useCase = graph.outcome.useCase || "Not captured";
   const constraint = (compliance?.text ?? graph.outcome.constraint) || "Not captured";
   const nextStep = graph.outcome.nextStep || "Not captured";

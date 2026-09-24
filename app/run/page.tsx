@@ -15,7 +15,7 @@ import type { Capture } from "@/lib/seed";
 import { cn } from "@/lib/utils";
 
 export default function RunPage() {
-  const { graph, brand, addCapture, updateCapture, setActiveStep, canEditSession, viewer } = useSession();
+  const { graph, brand, addCapture, updateCapture, saveSessionOutcome, setActiveStep, canEditSession, viewer } = useSession();
   const agenda = agendaForSession(graph);
   const activeStep = agenda.find((step) => step.state === "active") ?? agenda[2];
   const capturePeople = graph.attendees.map((attendee) => attendee.name);
@@ -158,10 +158,81 @@ export default function RunPage() {
                 )}
               </div>
             </div>
+
+            {canEditSession && (
+              <SessionOutcomeForm
+                key={`${graph.session.id}-outcome`}
+                useCase={graph.outcome.useCase}
+                constraint={graph.outcome.constraint}
+                nextStep={graph.outcome.nextStep}
+                onSave={saveSessionOutcome}
+              />
+            )}
           </div>
         </section>
       </div>
     </div>
+  );
+}
+
+function SessionOutcomeForm({
+  useCase,
+  constraint,
+  nextStep,
+  onSave,
+}: {
+  useCase: string;
+  constraint: string;
+  nextStep: string;
+  onSave: (update: { useCase: string; constraint: string; nextStep: string }) => void;
+}) {
+  const [draft, setDraft] = useState({ useCase, constraint, nextStep });
+  const unsaved = draft.useCase.trim() !== useCase
+    || draft.constraint.trim() !== constraint
+    || draft.nextStep.trim() !== nextStep;
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!unsaved) return;
+    onSave(draft);
+  }
+
+  const fields = [
+    ["Use case", "useCase", "What this pilot would do"],
+    ["Constraint", "constraint", "What has to be true to proceed"],
+    ["Next step", "nextStep", "What happens after this session"],
+  ] as const;
+
+  return (
+    <form onSubmit={submit} className="mt-7">
+      <div className="mb-3">
+        <h3 className="font-semibold">What the session agreed</h3>
+        <p className="text-sm text-black/50">Carried into the business case and the pilot setup brief.</p>
+      </div>
+      <div className="grid gap-3 rounded-sm border border-black/10 bg-white p-4 sm:grid-cols-3">
+        {fields.map(([label, field, placeholder]) => (
+          <label key={field} className="text-sm font-medium">
+            {label}
+            <Input
+              value={draft[field]}
+              onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))}
+              placeholder={placeholder}
+              className="mt-2 rounded-sm"
+            />
+          </label>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button type="submit" size="sm" disabled={!unsaved}>Save outcome</Button>
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn("text-xs font-medium", unsaved ? "text-amber-800" : "text-black/48")}
+        >
+          {unsaved ? "Unsaved changes" : "Saved · carried into the business case and pilot brief"}
+        </p>
+      </div>
+    </form>
   );
 }
 

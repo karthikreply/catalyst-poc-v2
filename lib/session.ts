@@ -217,6 +217,21 @@ export function savePartnerNote(graph: SessionGraph, note: PartnerNote): Session
   };
 }
 
+export function saveSessionOutcome(
+  graph: SessionGraph,
+  update: { useCase: string; constraint: string; nextStep: string },
+): SessionGraph {
+  return {
+    ...graph,
+    outcome: {
+      ...graph.outcome,
+      useCase: update.useCase.trim(),
+      constraint: update.constraint.trim(),
+      nextStep: update.nextStep.trim(),
+    },
+  };
+}
+
 export function updateCapture(
   graph: SessionGraph,
   captureId: string,

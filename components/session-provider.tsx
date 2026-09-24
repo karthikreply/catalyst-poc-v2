@@ -29,6 +29,7 @@ import {
   isSessionReadOnly,
   restoreSeededGraph,
   savePartnerNote as savePartnerNoteInGraph,
+  saveSessionOutcome as saveSessionOutcomeInGraph,
   updateCapture as updateCaptureInGraph,
   updateValueConfirmer as updateValueConfirmerInGraph,
   viewerForActor,
@@ -52,6 +53,7 @@ type SessionContextValue = {
   freezeLedgerNow: () => void;
   addCapture: (capture: Omit<Capture, "id" | "sessionId" | "capturedAt">) => void;
   updateCapture: (captureId: string, update: { attributedTo: string; text: string }) => void;
+  saveSessionOutcome: (update: { useCase: string; constraint: string; nextStep: string }) => void;
   setActiveStep: (stepId: string) => void;
   applyClaimsChoice: (choice: ClaimsVolumeChoice) => void;
   applyExactClaims: (quantity: number | null) => void;
@@ -196,6 +198,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setGraph((current) => updateCaptureInGraph(current, captureId, update));
   }
 
+  function saveSessionOutcome(update: { useCase: string; constraint: string; nextStep: string }) {
+    if (!canEditSession) return;
+    setGraph((current) => saveSessionOutcomeInGraph(current, update));
+  }
+
   function setActiveStep(stepId: string) {
     if (!canEditSession) return;
     setGraph((current) => ({
@@ -297,6 +304,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     freezeLedgerNow,
     addCapture,
     updateCapture,
+    saveSessionOutcome,
     setActiveStep,
     applyClaimsChoice,
     applyExactClaims,

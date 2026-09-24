@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initialSessionGraph } from "@/lib/seed";
-import { updateCapture } from "@/lib/session";
+import { applyColdScope, coldScopeDefaults, saveSessionOutcome, updateCapture } from "@/lib/session";
 
 const { useSessionMock } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
@@ -44,6 +44,7 @@ beforeEach(() => {
       updateCapture: (captureId: string, update: { attributedTo: string; text: string }) => {
         setGraph((current) => updateCapture(current, captureId, update));
       },
+      saveSessionOutcome: vi.fn(),
       setActiveStep: vi.fn(),
       updateValue: vi.fn(),
       updateValueConfirmer: vi.fn(),
@@ -52,6 +53,31 @@ beforeEach(() => {
     };
   });
 });
+
+function mockColdSession() {
+  useSessionMock.mockImplementation(() => {
+    const [graph, setGraph] = useState(
+      applyColdScope(initialSessionGraph, coldScopeDefaults.company, coldScopeDefaults.attendees),
+    );
+
+    return {
+      graph,
+      brand: { partnerName: "CDW" },
+      viewer: { actor: "partner", name: "Ravi Menon", org: "CDW" },
+      canEditSession: true,
+      addCapture: vi.fn(),
+      updateCapture: vi.fn(),
+      saveSessionOutcome: (update: { useCase: string; constraint: string; nextStep: string }) => {
+        setGraph((current) => saveSessionOutcome(current, update));
+      },
+      setActiveStep: vi.fn(),
+      updateValue: vi.fn(),
+      updateValueConfirmer: vi.fn(),
+      updateCostInput: vi.fn(),
+      freezeLedgerNow: vi.fn(),
+    };
+  });
+}
 
 afterEach(cleanup);
 
@@ -103,5 +129,34 @@ describe("what we heard", () => {
 
     expect(screen.getByText(sessionCapture.text)).toBeInTheDocument();
     expect(screen.queryByText("Rewritten.")).not.toBeInTheDocument();
+  });
+});
+
+describe("what the session agreed", () => {
+  it("starts empty in a cold session and confirms the save", () => {
+    mockColdSession();
+    render(<RunPage />);
+
+    const useCase = screen.getByLabelText("Use case");
+    expect(useCase).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Save outcome" })).toBeDisabled();
+
+    fireEvent.change(useCase, { target: { value: "AI-assisted claims intake extraction" } });
+    fireEvent.change(screen.getByLabelText("Constraint"), { target: { value: "Human review on low-confidence fields" } });
+    fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "6-week pilot on 500 claims" } });
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save outcome" }));
+
+    expect(screen.getByText(/^Saved/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save outcome" })).toBeDisabled();
+    expect(screen.getByLabelText("Use case")).toHaveValue("AI-assisted claims intake extraction");
+  });
+
+  it("prefills the seeded outcome so it can be edited", () => {
+    render(<RunPage />);
+
+    expect(screen.getByLabelText("Use case")).toHaveValue("AI-assisted claims intake extraction");
+    expect(screen.getByLabelText("Next step")).toHaveValue("6-week pilot on 500 anonymised claims");
   });
 });
