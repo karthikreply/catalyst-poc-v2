@@ -12,6 +12,9 @@ import { patterns, type CloseStyle, type Delivery, type Mechanic } from "@/lib/s
 import { agendaForSession, missingColdRoles, pdmPartnerInvitationCopy, preworkForMechanic } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
+const optionCardClass = "h-full rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60";
+const selectedOptionClass = "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]";
+
 export default function PlanPage() {
   const { graph, brand, setDelivery, setMechanic, setCloseStyle, canEditSession } = useSession();
   const people = withBrandPeople(brand);
@@ -94,69 +97,63 @@ ${people.signoff}`;
       <div className="mt-8 space-y-5">
         <section className="rounded-sm border border-black/10 bg-white p-6">
           <h2 className="text-lg font-semibold">How this session runs</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3 md:grid-rows-[auto_auto_auto]">
+            <div className="grid gap-2 md:row-span-3 md:grid-rows-subgrid">
               <p className="text-xs font-medium text-black/45">Who runs it</p>
-              <div className="mt-2 grid gap-2">
-                {([
-                  ["facilitated", "Facilitated", "A partner specialist is in the room."],
-                  ["self-service", "Customer self-service", `${graph.session.customerName} confirms the numbers without a partner facilitator. This is different from a partner running the session without a PDM.`],
-                ] as [Delivery, string, string][]).map(([value, label, hint]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={graph.session.delivery === value}
-                    disabled={!canEditSession}
-                    onClick={() => setDelivery(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60", graph.session.delivery === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
-                  >
-                    <span className="font-semibold">{label}</span>
-                    <span className="mt-1 block text-xs text-black/50">{hint}</span>
-                  </button>
-                ))}
-              </div>
+              {([
+                ["facilitated", "Facilitated", "A partner specialist is in the room."],
+                ["self-service", "Customer self-service", `${graph.session.customerName} confirms the numbers without a partner facilitator. This is different from a partner running the session without a PDM.`],
+              ] as [Delivery, string, string][]).map(([value, label, hint]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={graph.session.delivery === value}
+                  disabled={!canEditSession}
+                  onClick={() => setDelivery(value)}
+                  className={cn(optionCardClass, graph.session.delivery === value ? selectedOptionClass : "border-black/10")}
+                >
+                  <span className="font-semibold">{label}</span>
+                  <span className="mt-1 block text-xs text-black/50">{hint}</span>
+                </button>
+              ))}
             </div>
-            <div>
+            <div className="grid gap-2 md:row-span-3 md:grid-rows-subgrid">
               <p className="text-xs font-medium text-black/45">Session format</p>
-              <div className="mt-2 grid gap-2">
-                {([
-                  ["value-sprint", "Value sprint", "Agree the cost of the problem and commit to a next step."],
-                  ["ghost-ledger", "Ghost ledger", "The room watches the cost accumulate in real time. Needs their real numbers."],
-                ] as [Mechanic, string, string][]).map(([value, label, hint]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={graph.session.mechanic === value}
-                    disabled={!canEditSession}
-                    onClick={() => setMechanic(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60", graph.session.mechanic === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
-                  >
-                    <span className="font-semibold">{label}</span>
-                    <span className="mt-1 block text-xs text-black/50">{hint}</span>
-                  </button>
-                ))}
-              </div>
+              {([
+                ["value-sprint", "Value sprint", "Agree the cost of the problem and commit to a next step."],
+                ["ghost-ledger", "Ghost ledger", "The room watches the cost accumulate in real time. Needs their real numbers."],
+              ] as [Mechanic, string, string][]).map(([value, label, hint]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={graph.session.mechanic === value}
+                  disabled={!canEditSession}
+                  onClick={() => setMechanic(value)}
+                  className={cn(optionCardClass, graph.session.mechanic === value ? selectedOptionClass : "border-black/10")}
+                >
+                  <span className="font-semibold">{label}</span>
+                  <span className="mt-1 block text-xs text-black/50">{hint}</span>
+                </button>
+              ))}
             </div>
-            <div>
+            <div className="grid gap-2 md:row-span-3 md:grid-rows-subgrid">
               <p className="text-xs font-medium text-black/45">How it closes</p>
-              <div className="mt-2 grid gap-2">
-                {([
-                  ["owner-and-ask", "Owner and ask", "Name the owner and make the funding ask explicit."],
-                  ["board-slide", "Board-slide close", "Time Traveler: imagine the pilot succeeded, then capture the sponsor's words verbatim."],
-                ] as [CloseStyle, string, string][]).map(([value, label, hint]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={graph.session.closeStyle === value}
-                    disabled={!canEditSession}
-                    onClick={() => setCloseStyle(value)}
-                    className={cn("rounded-sm border p-3 text-left text-sm disabled:cursor-not-allowed disabled:opacity-60", graph.session.closeStyle === value ? "border-[var(--brand-accent)] bg-[color-mix(in_srgb,var(--brand-accent)_6%,white)]" : "border-black/10")}
-                  >
-                    <span className="font-semibold">{label}</span>
-                    <span className="mt-1 block text-xs text-black/50">{hint}</span>
-                  </button>
-                ))}
-              </div>
+              {([
+                ["owner-and-ask", "Owner and ask", "Name the owner and make the funding ask explicit."],
+                ["board-slide", "Board-slide close", "Time Traveler: imagine the pilot succeeded, then capture the sponsor's words verbatim."],
+              ] as [CloseStyle, string, string][]).map(([value, label, hint]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={graph.session.closeStyle === value}
+                  disabled={!canEditSession}
+                  onClick={() => setCloseStyle(value)}
+                  className={cn(optionCardClass, graph.session.closeStyle === value ? selectedOptionClass : "border-black/10")}
+                >
+                  <span className="font-semibold">{label}</span>
+                  <span className="mt-1 block text-xs text-black/50">{hint}</span>
+                </button>
+              ))}
             </div>
           </div>
           <p className="mt-4 text-sm text-black/55">Practice sponsor: {people.sponsorLine}</p>
